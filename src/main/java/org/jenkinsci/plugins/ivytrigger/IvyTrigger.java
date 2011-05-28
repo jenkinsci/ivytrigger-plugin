@@ -53,7 +53,7 @@ public class IvyTrigger extends Trigger<BuildableItem> implements Serializable {
     public void start(BuildableItem project, boolean newInstance) {
         super.start(project, newInstance);
         try {
-            computedDependencies = getEvaluatedLatestRevision();
+            computedDependencies = getEvaluatedLatestRevision(new IvyTriggerLog(TaskListener.NULL));
         } catch (IvyTriggerException e) {
             //Ignore exception, log it
             LOGGER.log(Level.SEVERE, e.getMessage());
@@ -92,14 +92,14 @@ public class IvyTrigger extends Trigger<BuildableItem> implements Serializable {
             try {
                 long start = System.currentTimeMillis();
                 log.info("Polling started on " + DateFormat.getDateTimeInstance().format(new Date(start)));
+                log.info(String.format("Checking dependencies version of the Ivy path '%s'.", ivyPath));
                 boolean changed = checkIfModified(log);
-                log.info(String.format("Computing the dependency of the Ivy path '%s'.", ivyPath));
                 log.info("Polling complete. Took " + Util.getTimeSpanString(System.currentTimeMillis() - start));
                 if (changed) {
-                    log.info("A dependency version has changed. Scheduling a build.");
+                    log.info("Dependencies have changed. Scheduling a build.");
                     job.scheduleBuild(new IvyTriggerCause());
                 } else {
-                    log.info("Any dependency version has changed.");
+                    log.info("No change.");
                 }
             } catch (IvyTriggerException e) {
                 log.error("Polling error " + e.getMessage());
@@ -129,44 +129,65 @@ public class IvyTrigger extends Trigger<BuildableItem> implements Serializable {
     }
 
 
-    private Map<String, String> getEvaluatedLatestRevision() throws IvyTriggerException {
-        Map<String, String> result = new HashMap<String, String>();
+    private FilePath getDescriptorFilePathIfExists(String path, AbstractProject job, FilePath oneLauncher)
+            throws IvyTriggerException, IOException, InterruptedException {
 
-        FilePath ivyFileFilePath = null;
-        FilePath ivySettingsFilePath = null;
+        //1-- Try to find the file in the last workspace if any
+        FilePath workspace = job.getSomeWorkspace();
+        if (workspace != null) {
+            FilePath ivyDescPath = workspace.child(path);
+            if (ivyDescPath.exists()) {
+                return ivyDescPath;
+            }
+        }
+
+        //2-- Try Slave
+
+        //A slave is off
+        if (oneLauncher == null) {
+            //try a full path from the master
+            File file = new File(path);
+            if (file.exists()) {
+                return new FilePath(file);
+            }
+            return null;
+        } else {
+
+            FilePath filePath = new FilePath(oneLauncher, path);
+            if (filePath.exists()) {
+                return filePath;
+            }
+            return null;
+
+        }
+    }
+
+
+    private Map<String, String> getEvaluatedLatestRevision(IvyTriggerLog log) throws IvyTriggerException {
 
         FilePath oneLauncherNode = getOneLauncherNode();
         try {
 
-            //Try to find the files in the workspace before
-            FilePath workspace = ((AbstractProject) job).getSomeWorkspace();
-            if (workspace != null) {
-                ivyFileFilePath = workspace.child(ivyPath);
-                ivySettingsFilePath = workspace.child(ivySettingsPath);
+            final FilePath ivyFilePath = getDescriptorFilePathIfExists(ivyPath, (AbstractProject) job, oneLauncherNode);
+            final FilePath ivySettingsFilePath = getDescriptorFilePathIfExists(ivySettingsPath, (AbstractProject) job, oneLauncherNode);
+
+            if (ivyFilePath == null) {
+                log.error(String.format("The ivy file '%s' doesn't exist.", ivyFilePath));
+                return null;
+            }
+            if (ivySettingsFilePath == null) {
+                log.error(String.format("The ivy settings file '%s' doesn't exist.", ivyFilePath));
+                return null;
             }
 
-            // Try to find the files on a node (master or slaves)
-            if (!ivyFileFilePath.exists() && !ivySettingsFilePath.exists()) {
-                ivyFileFilePath = new FilePath(oneLauncherNode, ivyPath);
-                ivySettingsFilePath = new FilePath(oneLauncherNode, ivySettingsPath);
-            }
-
-            if (!ivyFileFilePath.exists() || !ivySettingsFilePath.exists()) {
-                return result;
-            }
-
-
-            final FilePath ivyFilePathFinal = ivyFileFilePath;
-            final FilePath ivySettingsFilePathFinal = ivyFileFilePath;
-
-            result = oneLauncherNode.act(new FilePath.FileCallable<Map<String, String>>() {
+            Map<String, String> result = oneLauncherNode.act(new FilePath.FileCallable<Map<String, String>>() {
                 public Map<String, String> invoke(File f, VirtualChannel channel) throws IOException, InterruptedException {
                     Map<String, String> result = new HashMap<String, String>();
                     Ivy ivy = Ivy.newInstance();
                     try {
-                        ivy.configure(new File(ivySettingsFilePathFinal.getRemote()));
+                        ivy.configure(new File(ivySettingsFilePath.getRemote()));
                         ResolveReport resolveReport = null;
-                        resolveReport = ivy.resolve(new File(ivyFilePathFinal.getRemote()));
+                        resolveReport = ivy.resolve(new File(ivyFilePath.getRemote()));
                         List dependencies = resolveReport.getDependencies();
                         for (Object dependencyObject : dependencies) {
                             IvyNode dependencyNode = (IvyNode) dependencyObject;
@@ -184,6 +205,8 @@ public class IvyTrigger extends Trigger<BuildableItem> implements Serializable {
                     return result;
                 }
             });
+            return result;
+
         } catch (IOException ioe) {
             throw new IvyTriggerException(ioe);
         } catch (InterruptedException ie) {
@@ -191,38 +214,48 @@ public class IvyTrigger extends Trigger<BuildableItem> implements Serializable {
         } catch (RuntimeException re) {
             throw new IvyTriggerException(re);
         }
-
-
-        return result;
     }
 
     private boolean checkIfModified(IvyTriggerLog log) throws IvyTriggerException {
-        Map<String, String> newComputedDependencies = getEvaluatedLatestRevision();
-        assert computedDependencies != null;
-        assert newComputedDependencies != null;
+
+        Map<String, String> newComputedDependencies = getEvaluatedLatestRevision(log);
+
+        if (computedDependencies == null) {
+            computedDependencies = newComputedDependencies;
+            return false;
+        }
+
+        if (newComputedDependencies == null) {
+            computedDependencies = null;
+            return false;
+        }
 
         if (computedDependencies.size() != newComputedDependencies.size()) {
             log.info(String.format("The dependencies size has changed."));
+            computedDependencies = newComputedDependencies;
             return true;
         }
 
         for (Map.Entry<String, String> dependency : computedDependencies.entrySet()) {
 
             String moduleId = dependency.getKey();
-            String revision = dependency.getKey();
+            String revision = dependency.getValue();
             String newRevision = newComputedDependencies.get(moduleId);
             if (newRevision == null) {
                 log.info(String.format("The dependency '%s' doesn't exist anymore.", moduleId));
+                computedDependencies = newComputedDependencies;
                 return true;
             }
 
             if (!newRevision.equals(revision)) {
-                log.info(String.format("The dependency version '%s' changed. The new version is %s.", moduleId, newRevision));
+                log.info(String.format("The dependency version '%s' has changed. The new computed version is %s.", moduleId, newRevision));
+                computedDependencies = newComputedDependencies;
                 return true;
             }
 
         }
 
+        computedDependencies = newComputedDependencies;
         return false;
     }
 
@@ -277,7 +310,7 @@ public class IvyTrigger extends Trigger<BuildableItem> implements Serializable {
 
         @Override
         public String getDisplayName() {
-            return "Poll with a Ivy script or a Gradle script";
+            return "Poll with an Ivy script";
         }
     }
 
