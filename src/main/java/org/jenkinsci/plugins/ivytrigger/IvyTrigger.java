@@ -163,7 +163,7 @@ public class IvyTrigger extends Trigger<BuildableItem> implements Serializable {
     }
 
 
-    private Map<String, String> getEvaluatedLatestRevision(IvyTriggerLog log) throws IvyTriggerException {
+    private Map<String, String> getEvaluatedLatestRevision(final IvyTriggerLog log) throws IvyTriggerException {
 
         FilePath oneLauncherNode = getOneLauncherNode();
         try {
@@ -175,17 +175,19 @@ public class IvyTrigger extends Trigger<BuildableItem> implements Serializable {
                 log.error(String.format("The ivy file '%s' doesn't exist.", ivyFilePath));
                 return null;
             }
-            if (ivySettingsFilePath == null) {
-                log.error(String.format("The ivy settings file '%s' doesn't exist.", ivyFilePath));
-                return null;
-            }
 
             Map<String, String> result = oneLauncherNode.act(new FilePath.FileCallable<Map<String, String>>() {
                 public Map<String, String> invoke(File f, VirtualChannel channel) throws IOException, InterruptedException {
                     Map<String, String> result = new HashMap<String, String>();
                     Ivy ivy = Ivy.newInstance();
                     try {
-                        ivy.configure(new File(ivySettingsFilePath.getRemote()));
+                        if (ivySettingsFilePath == null) {
+                            log.info("Configured Ivy using default 2.0 settings");
+                            ivy.configureDefault();
+                        } else {
+                            log.info("Configured Ivy using the Ivy settings " + ivySettingsFilePath.getRemote());
+                            ivy.configure(new File(ivySettingsFilePath.getRemote()));
+                        }
                         ResolveReport resolveReport = null;
                         resolveReport = ivy.resolve(new File(ivyFilePath.getRemote()));
                         List dependencies = resolveReport.getDependencies();
