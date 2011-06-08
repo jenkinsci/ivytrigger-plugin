@@ -274,18 +274,20 @@ public class IvyTrigger extends Trigger<BuildableItem> implements Serializable {
     @Override
     public void run() {
 
-        IvyScriptTriggerDescriptor descriptor = getDescriptor();
-        ExecutorService executorService = descriptor.getExecutor();
-        StreamTaskListener listener;
-        try {
-            listener = new StreamTaskListener(getLogFile());
-            IvyTriggerLog log = new IvyTriggerLog(listener);
-            Runner runner = new Runner(log);
-            executorService.execute(runner);
+        if (!Hudson.getInstance().isQuietingDown() && ((AbstractProject) this.job).isBuildable()) {
+            IvyScriptTriggerDescriptor descriptor = getDescriptor();
+            ExecutorService executorService = descriptor.getExecutor();
+            StreamTaskListener listener;
+            try {
+                listener = new StreamTaskListener(getLogFile());
+                IvyTriggerLog log = new IvyTriggerLog(listener);
+                Runner runner = new Runner(log);
+                executorService.execute(runner);
 
-        } catch (Throwable t) {
-            LOGGER.log(Level.SEVERE, "Severe Error during the trigger execution " + t.getMessage());
-            t.printStackTrace();
+            } catch (Throwable t) {
+                LOGGER.log(Level.SEVERE, "Severe Error during the trigger execution " + t.getMessage());
+                t.printStackTrace();
+            }
         }
     }
 
