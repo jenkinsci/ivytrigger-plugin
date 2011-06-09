@@ -38,8 +38,8 @@
     </dependencies>
 
     <scm>
-        <connection>scm:git:git://github.com:cittools/ivytrigger-plugin.git</connection>
-        <developerConnection>scm:git:git@github.com:cittools/ivytrigger-plugin.git</developerConnection>
+        <connection>scm:git:git://github.com/jenkinsci/ivytrigger-plugin.git</connection>
+        <developerConnection>scm:git:git://github.com/jenkinsci/ivytrigger-plugin.git</developerConnection>
     </scm>
 
 </project>
