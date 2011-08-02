@@ -313,6 +313,11 @@ public class IvyTrigger extends Trigger<BuildableItem> implements Serializable {
         }
 
         @Override
+        public String getHelpFile() {
+            return "/plugin/ivytrigger/help.html";
+        }
+
+        @Override
         public String getDisplayName() {
             return "Poll with an Ivy script";
         }
