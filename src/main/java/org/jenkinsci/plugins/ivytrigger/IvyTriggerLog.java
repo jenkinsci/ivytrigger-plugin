@@ -2,10 +2,12 @@ package org.jenkinsci.plugins.ivytrigger;
 
 import hudson.model.TaskListener;
 
+import java.io.Serializable;
+
 /**
  * @author Gregory Boissinot
  */
-public class IvyTriggerLog {
+public class IvyTriggerLog implements Serializable {
 
     private TaskListener listener;
 
