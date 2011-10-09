@@ -99,7 +99,7 @@ public class IvyTrigger extends Trigger<BuildableItem> implements Serializable {
                     log.info("Dependencies have changed. Scheduling a build.");
                     job.scheduleBuild(new IvyTriggerCause());
                 } else {
-                    log.info("No change.");
+                    log.info("No changes.");
                 }
             } catch (IvyTriggerException e) {
                 log.error("Polling error " + e.getMessage());
