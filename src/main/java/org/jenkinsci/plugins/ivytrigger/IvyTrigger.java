@@ -109,11 +109,12 @@ public class IvyTrigger extends Trigger<BuildableItem> implements Serializable {
         }
     }
 
-    private FilePath getLauncherNode() {
+    private FilePath getLauncherNodePathFilePath(IvyTriggerLog log) {
         AbstractProject p = (AbstractProject) job;
 
         Label label = p.getAssignedLabel();
         if (label == null) {
+            log.info("Running on master");
             return Hudson.getInstance().getRootPath();
         } else {
             Node lastBuildOn = p.getLastBuiltOn();
@@ -124,9 +125,11 @@ public class IvyTrigger extends Trigger<BuildableItem> implements Serializable {
                 if (!isPreviousNode) {
                     FilePath nodePath = node.getRootPath();
                     if (nodePath != null) {
+                        log.info("Running on " + node);
                         return nodePath;
                     }
                 } else if (node.getRootPath().equals(lastBuildOn.getRootPath())) {
+                    log.info("Running on " + node);
                     return lastBuildOn.getRootPath();
                 }
             }
@@ -170,7 +173,7 @@ public class IvyTrigger extends Trigger<BuildableItem> implements Serializable {
 
     private Map<String, String> getEvaluatedLatestRevision(final IvyTriggerLog log) throws IvyTriggerException {
 
-        FilePath oneLauncherNode = getLauncherNode();
+        FilePath oneLauncherNode = getLauncherNodePathFilePath(log);
         try {
 
             final FilePath ivyFilePath = getDescriptorFilePathIfExists(ivyPath, (AbstractProject) job, oneLauncherNode);
@@ -324,7 +327,7 @@ public class IvyTrigger extends Trigger<BuildableItem> implements Serializable {
 
         @Override
         public String getDisplayName() {
-            return "Poll with an Ivy script";
+            return "[IvyTrigger] - Poll with an Ivy script";
         }
     }
 
