@@ -109,25 +109,30 @@ public class IvyTrigger extends Trigger<BuildableItem> implements Serializable {
         }
     }
 
-    private FilePath getOneLauncherNode() {
+    private FilePath getLauncherNode() {
         AbstractProject p = (AbstractProject) job;
+
         Label label = p.getAssignedLabel();
         if (label == null) {
             return Hudson.getInstance().getRootPath();
         } else {
+            Node lastBuildOn = p.getLastBuiltOn();
+            boolean isPreviousNode = lastBuildOn != null;
             Set<Node> nodes = label.getNodes();
-            Node node;
-            for (Iterator<Node> it = nodes.iterator(); it.hasNext();) {
-                node = it.next();
-                FilePath nodePath = node.getRootPath();
-                if (nodePath != null) {
-                    return nodePath;
+            for (Iterator<Node> it = nodes.iterator(); it.hasNext(); ) {
+                Node node = it.next();
+                if (!isPreviousNode) {
+                    FilePath nodePath = node.getRootPath();
+                    if (nodePath != null) {
+                        return nodePath;
+                    }
+                } else if (node.getRootPath().equals(lastBuildOn.getRootPath())) {
+                    return lastBuildOn.getRootPath();
                 }
             }
-            return null;
         }
+        return null;
     }
-
 
     private FilePath getDescriptorFilePathIfExists(String path, AbstractProject job, FilePath oneLauncher)
             throws IvyTriggerException, IOException, InterruptedException {
@@ -165,7 +170,7 @@ public class IvyTrigger extends Trigger<BuildableItem> implements Serializable {
 
     private Map<String, String> getEvaluatedLatestRevision(final IvyTriggerLog log) throws IvyTriggerException {
 
-        FilePath oneLauncherNode = getOneLauncherNode();
+        FilePath oneLauncherNode = getLauncherNode();
         try {
 
             final FilePath ivyFilePath = getDescriptorFilePathIfExists(ivyPath, (AbstractProject) job, oneLauncherNode);
