@@ -144,7 +144,6 @@ public class IvyTrigger extends Trigger<BuildableItem> implements Serializable {
         }
     }
 
-
     private Node getLauncherNode(IvyTriggerLog log) {
         AbstractProject p = (AbstractProject) job;
         Label label = p.getAssignedLabel();
@@ -192,7 +191,6 @@ public class IvyTrigger extends Trigger<BuildableItem> implements Serializable {
         }
         return null;
     }
-
 
     private boolean checkIfModified(IvyTriggerLog log) throws IvyTriggerException, IOException, InterruptedException {
 
