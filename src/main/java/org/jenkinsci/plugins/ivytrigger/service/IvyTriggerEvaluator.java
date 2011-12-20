@@ -7,8 +7,8 @@ import org.apache.ivy.core.module.id.ModuleRevisionId;
 import org.apache.ivy.core.report.ResolveReport;
 import org.apache.ivy.core.resolve.IvyNode;
 import org.apache.ivy.core.resolve.ResolvedModuleRevision;
-import org.jenkinsci.plugins.ivytrigger.IvyTriggerException;
-import org.jenkinsci.plugins.ivytrigger.IvyTriggerLog;
+import org.jenkinsci.lib.xtrigger.XTriggerException;
+import org.jenkinsci.lib.xtrigger.XTriggerLog;
 
 import java.io.File;
 import java.io.IOException;
@@ -20,21 +20,21 @@ import java.util.Map;
 /**
  * @author Gregory Boissinot
  */
-public class IvyTriggerEvaluator implements Callable<Map<String, String>, IvyTriggerException> {
+public class IvyTriggerEvaluator implements Callable<Map<String, String>, XTriggerException> {
 
     private FilePath ivyFilePath;
 
     private FilePath ivySettingsFilePath;
 
-    private IvyTriggerLog log;
+    private XTriggerLog log;
 
-    public IvyTriggerEvaluator(FilePath ivyFilePath, FilePath ivySettingsFilePath, IvyTriggerLog log) {
+    public IvyTriggerEvaluator(FilePath ivyFilePath, FilePath ivySettingsFilePath, XTriggerLog log) {
         this.ivyFilePath = ivyFilePath;
         this.ivySettingsFilePath = ivySettingsFilePath;
         this.log = log;
     }
 
-    public Map<String, String> call() throws IvyTriggerException {
+    public Map<String, String> call() throws XTriggerException {
         Map<String, String> result;
         try {
             log.info(String.format("Recording dependencies versions of the given Ivy path '%s'.", ivyFilePath));
@@ -44,15 +44,15 @@ public class IvyTriggerEvaluator implements Callable<Map<String, String>, IvyTri
             List dependencies = resolveReport.getDependencies();
             result = getMapDependencies(dependencies);
         } catch (ParseException pe) {
-            throw new IvyTriggerException(pe);
+            throw new XTriggerException(pe);
         } catch (IOException ioe) {
-            throw new IvyTriggerException(ioe);
+            throw new XTriggerException(ioe);
         }
 
         return result;
     }
 
-    private Ivy getIvyObject(IvyTriggerLog log) throws IvyTriggerException {
+    private Ivy getIvyObject(XTriggerLog log) throws XTriggerException {
         Ivy ivy = Ivy.newInstance();
         try {
             if (ivySettingsFilePath == null) {
@@ -63,9 +63,9 @@ public class IvyTriggerEvaluator implements Callable<Map<String, String>, IvyTri
                 ivy.configure(new File(ivySettingsFilePath.getRemote()));
             }
         } catch (ParseException pe) {
-            throw new IvyTriggerException(pe);
+            throw new XTriggerException(pe);
         } catch (IOException ioe) {
-            throw new IvyTriggerException(ioe);
+            throw new XTriggerException(ioe);
         }
         return ivy;
     }

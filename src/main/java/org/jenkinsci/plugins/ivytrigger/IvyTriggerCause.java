@@ -1,14 +1,15 @@
 package org.jenkinsci.plugins.ivytrigger;
 
-import hudson.model.Cause;
+import org.jenkinsci.lib.xtrigger.XTriggerCause;
 
 /**
  * @author Gregory Boissinot
  */
-public class IvyTriggerCause extends Cause {
+@Deprecated
+public class IvyTriggerCause extends XTriggerCause {
 
-    @Override
-    public String getShortDescription() {
-        return "[IvyTrigger] - Ivy Dependency trigger";
+    public IvyTriggerCause(String causeFrom) {
+        super("IvyTrigger", causeFrom);
+
     }
 }

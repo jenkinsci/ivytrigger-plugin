@@ -5,18 +5,20 @@ import hudson.Extension;
 import hudson.FilePath;
 import hudson.Util;
 import hudson.model.*;
-import hudson.triggers.Trigger;
 import hudson.triggers.TriggerDescriptor;
+import hudson.util.NullStream;
 import hudson.util.SequentialExecutionQueue;
 import hudson.util.StreamTaskListener;
-import org.jenkinsci.plugins.ivytrigger.service.IvyTriggerEnvVarsRetriever;
+import org.jenkinsci.lib.xtrigger.AbstractTrigger;
+import org.jenkinsci.lib.xtrigger.XTriggerException;
+import org.jenkinsci.lib.xtrigger.XTriggerLog;
+import org.jenkinsci.lib.xtrigger.service.XTriggerEnvVarsResolver;
 import org.jenkinsci.plugins.ivytrigger.service.IvyTriggerEvaluator;
 import org.kohsuke.stapler.DataBoundConstructor;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
-import java.text.DateFormat;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -27,7 +29,7 @@ import java.util.logging.Logger;
 /**
  * @author Gregory Boissinot
  */
-public class IvyTrigger extends Trigger<BuildableItem> implements Serializable {
+public class IvyTrigger extends AbstractTrigger implements Serializable {
 
     private static Logger LOGGER = Logger.getLogger(IvyTrigger.class.getName());
 
@@ -48,7 +50,7 @@ public class IvyTrigger extends Trigger<BuildableItem> implements Serializable {
     public void start(BuildableItem project, boolean newInstance) {
         super.start(project, newInstance);
         try {
-            IvyTriggerLog log = new IvyTriggerLog(TaskListener.NULL);
+            XTriggerLog log = new XTriggerLog(new StreamTaskListener(new NullStream()));
             log.info("Starting to record dependencies versions.");
 
             AbstractProject abstractProject = (AbstractProject) job;
@@ -58,7 +60,7 @@ public class IvyTrigger extends Trigger<BuildableItem> implements Serializable {
                 return;
             }
 
-            IvyTriggerEnvVarsRetriever varsRetriever = new IvyTriggerEnvVarsRetriever();
+            XTriggerEnvVarsResolver varsRetriever = new XTriggerEnvVarsResolver();
             Map<String, String> enVars = varsRetriever.getEnvVars(abstractProject, launcherNode, log);
 
             FilePath ivyFilePath = getDescriptorFilePath(ivyPath, abstractProject, launcherNode, log, enVars);
@@ -69,7 +71,7 @@ public class IvyTrigger extends Trigger<BuildableItem> implements Serializable {
             FilePath ivySettingsFilePath = getDescriptorFilePath(ivySettingsPath, abstractProject, launcherNode, log, enVars);
 
             computedDependencies = getDependenciesMapForNode(launcherNode, log, ivyFilePath, ivySettingsFilePath);
-        } catch (IvyTriggerException e) {
+        } catch (XTriggerException e) {
             //Ignore the exception process, just log it
             LOGGER.log(Level.SEVERE, e.getMessage());
         } catch (InterruptedException e) {
@@ -82,9 +84,9 @@ public class IvyTrigger extends Trigger<BuildableItem> implements Serializable {
     }
 
     private Map<String, String> getDependenciesMapForNode(Node launcherNode,
-                                                          IvyTriggerLog log,
+                                                          XTriggerLog log,
                                                           FilePath ivyFilePath,
-                                                          FilePath ivySettingsFilePath) throws IOException, InterruptedException, IvyTriggerException {
+                                                          FilePath ivySettingsFilePath) throws IOException, InterruptedException, XTriggerException {
         Map<String, String> dependenciesMap = null;
         if (launcherNode != null) {
             FilePath launcherFilePath = launcherNode.getRootPath();
@@ -112,39 +114,39 @@ public class IvyTrigger extends Trigger<BuildableItem> implements Serializable {
         return Collections.singleton(action);
     }
 
-    /**
-     * Asynchronous task
-     */
-    protected class Runner implements Runnable, Serializable {
+//    /**
+//     * Asynchronous task
+//     */
+//    protected class Runner implements Runnable, Serializable {
+//
+//        private IvyTriggerLog log;
+//
+//        Runner(IvyTriggerLog log) {
+//            this.log = log;
+//        }
+//
+//        public void run() {
+//
+//            try {
+//                long start = System.currentTimeMillis();
+//                log.info("Polling started on " + DateFormat.getDateTimeInstance().format(new Date(start)));
+//                boolean changed = checkIfModified(log);
+//                log.info("Polling complete. Took " + Util.getTimeSpanString(System.currentTimeMillis() - start));
+//                if (changed) {
+//                    log.info("Dependencies have changed. Scheduling a build.");
+//                    job.scheduleBuild(new IvyTriggerCause());
+//                } else {
+//                    log.info("No changes.");
+//                }
+//            } catch (IvyTriggerException e) {
+//                log.error("Polling error " + e.getMessage());
+//            } catch (Throwable e) {
+//                log.error("SEVERE - Polling error " + e.getMessage());
+//            }
+//        }
+//    }
 
-        private IvyTriggerLog log;
-
-        Runner(IvyTriggerLog log) {
-            this.log = log;
-        }
-
-        public void run() {
-
-            try {
-                long start = System.currentTimeMillis();
-                log.info("Polling started on " + DateFormat.getDateTimeInstance().format(new Date(start)));
-                boolean changed = checkIfModified(log);
-                log.info("Polling complete. Took " + Util.getTimeSpanString(System.currentTimeMillis() - start));
-                if (changed) {
-                    log.info("Dependencies have changed. Scheduling a build.");
-                    job.scheduleBuild(new IvyTriggerCause());
-                } else {
-                    log.info("No changes.");
-                }
-            } catch (IvyTriggerException e) {
-                log.error("Polling error " + e.getMessage());
-            } catch (Throwable e) {
-                log.error("SEVERE - Polling error " + e.getMessage());
-            }
-        }
-    }
-
-    private Node getLauncherNode(IvyTriggerLog log) {
+    private Node getLauncherNode(XTriggerLog log) {
         AbstractProject p = (AbstractProject) job;
         Label label = p.getAssignedLabel();
         if (label == null) {
@@ -165,7 +167,7 @@ public class IvyTrigger extends Trigger<BuildableItem> implements Serializable {
         }
     }
 
-    private Node getLauncherNodeSlave(AbstractProject project, Label label, IvyTriggerLog log) {
+    private Node getLauncherNodeSlave(AbstractProject project, Label label, XTriggerLog log) {
         Node lastBuildOnNode = project.getLastBuiltOn();
         boolean isAPreviousBuildNode = lastBuildOnNode != null;
 
@@ -192,7 +194,8 @@ public class IvyTrigger extends Trigger<BuildableItem> implements Serializable {
         return null;
     }
 
-    private boolean checkIfModified(IvyTriggerLog log) throws IvyTriggerException, IOException, InterruptedException {
+    @Override
+    protected boolean checkIfModified(XTriggerLog log) throws XTriggerException {
 
         AbstractProject project = (AbstractProject) job;
         Node launcherNode = getLauncherNode(log);
@@ -201,7 +204,7 @@ public class IvyTrigger extends Trigger<BuildableItem> implements Serializable {
             return false;
         }
 
-        IvyTriggerEnvVarsRetriever varsRetriever = new IvyTriggerEnvVarsRetriever();
+        XTriggerEnvVarsResolver varsRetriever = new XTriggerEnvVarsResolver();
         Map<String, String> envVars = varsRetriever.getEnvVars(project, launcherNode, log);
 
         //Get ivy file
@@ -214,11 +217,18 @@ public class IvyTrigger extends Trigger<BuildableItem> implements Serializable {
         //Get ivysettings file
         FilePath ivySettingsFilePath = getDescriptorFilePath(ivySettingsPath, project, launcherNode, log, envVars);
 
-        Map<String, String> newComputedDependencies = getDependenciesMapForNode(launcherNode, log, ivyFilePath, ivySettingsFilePath);
+        Map<String, String> newComputedDependencies = null;
+        try {
+            newComputedDependencies = getDependenciesMapForNode(launcherNode, log, ivyFilePath, ivySettingsFilePath);
+        } catch (IOException ioe) {
+            throw new XTriggerException(ioe);
+        } catch (InterruptedException ie) {
+            throw new XTriggerException(ie);
+        }
         return checkIfModifiedWithResolvedElements(log, newComputedDependencies);
     }
 
-    private boolean checkIfModifiedWithResolvedElements(IvyTriggerLog log, Map<String, String> newComputedDependencies) throws IvyTriggerException {
+    private boolean checkIfModifiedWithResolvedElements(XTriggerLog log, Map<String, String> newComputedDependencies) throws XTriggerException {
 
         if (newComputedDependencies == null) {
             log.error("Can't record the new dependencies graph.");
@@ -226,7 +236,7 @@ public class IvyTrigger extends Trigger<BuildableItem> implements Serializable {
             return false;
         }
 
-        if (newComputedDependencies.size()==0){
+        if (newComputedDependencies.size() == 0) {
             log.error("Can't compute any dependencies. Check your settings.");
             computedDependencies = null;
             return false;
@@ -254,7 +264,7 @@ public class IvyTrigger extends Trigger<BuildableItem> implements Serializable {
         return false;
     }
 
-    private boolean isChangedDependency(IvyTriggerLog log, Map.Entry<String, String> dependency, Map<String, String> newComputedDependencies) {
+    private boolean isChangedDependency(XTriggerLog log, Map.Entry<String, String> dependency, Map<String, String> newComputedDependencies) {
         String moduleId = dependency.getKey();
         String revision = dependency.getValue();
         String newRevision = newComputedDependencies.get(moduleId);
@@ -281,9 +291,9 @@ public class IvyTrigger extends Trigger<BuildableItem> implements Serializable {
     private FilePath getDescriptorFilePath(String filePath,
                                            AbstractProject job,
                                            Node launcherNode,
-                                           IvyTriggerLog log,
+                                           XTriggerLog log,
                                            Map<String, String> envVars)
-            throws IvyTriggerException {
+            throws XTriggerException {
         try {
 
             if (filePath == null) {
@@ -326,9 +336,9 @@ public class IvyTrigger extends Trigger<BuildableItem> implements Serializable {
             }
 
         } catch (IOException ioe) {
-            throw new IvyTriggerException(ioe);
+            throw new XTriggerException(ioe);
         } catch (InterruptedException ie) {
-            throw new IvyTriggerException(ie);
+            throw new XTriggerException(ie);
         }
     }
 
@@ -337,7 +347,7 @@ public class IvyTrigger extends Trigger<BuildableItem> implements Serializable {
      *
      * @return the trigger log
      */
-    private File getLogFile() {
+    protected File getLogFile() {
         return new File(job.getRootDir(), "ivy-polling.log");
     }
 
@@ -350,8 +360,8 @@ public class IvyTrigger extends Trigger<BuildableItem> implements Serializable {
             StreamTaskListener listener;
             try {
                 listener = new StreamTaskListener(getLogFile());
-                IvyTriggerLog log = new IvyTriggerLog(listener);
-                Runner runner = new Runner(log);
+                XTriggerLog log = new XTriggerLog(listener);
+                Runner runner = new Runner(log, "IvyTrigger");
                 executorService.execute(runner);
 
             } catch (Throwable t) {
@@ -361,6 +371,10 @@ public class IvyTrigger extends Trigger<BuildableItem> implements Serializable {
         }
     }
 
+    @Override
+    public String getCause() {
+        return "Ivy Dependency trigger";
+    }
 
     @Override
     public IvyScriptTriggerDescriptor getDescriptor() {
