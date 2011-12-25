@@ -361,8 +361,12 @@ public class IvyTrigger extends AbstractTrigger implements Serializable {
             try {
                 listener = new StreamTaskListener(getLogFile());
                 XTriggerLog log = new XTriggerLog(listener);
-                Runner runner = new Runner(log, "IvyTrigger");
-                executorService.execute(runner);
+                if (!Hudson.getInstance().isQuietingDown() && ((AbstractProject) job).isBuildable()) {
+                    Runner runner = new Runner(log, "IvyTrigger");
+                    executorService.execute(runner);
+                } else {
+                    log.info("Jenkins is quieting down or the job is not buildable.");
+                }
 
             } catch (Throwable t) {
                 LOGGER.log(Level.SEVERE, "Severe Error during the trigger execution " + t.getMessage());
