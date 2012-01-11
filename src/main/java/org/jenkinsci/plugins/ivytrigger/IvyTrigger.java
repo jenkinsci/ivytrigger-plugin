@@ -4,24 +4,28 @@ import antlr.ANTLRException;
 import hudson.Extension;
 import hudson.FilePath;
 import hudson.Util;
-import hudson.model.*;
-import hudson.triggers.TriggerDescriptor;
+import hudson.model.AbstractProject;
+import hudson.model.Action;
+import hudson.model.BuildableItem;
+import hudson.model.Node;
 import hudson.util.NullStream;
-import hudson.util.SequentialExecutionQueue;
 import hudson.util.StreamTaskListener;
+import org.jenkinsci.lib.envinject.EnvInjectException;
+import org.jenkinsci.lib.envinject.service.EnvVarsResolver;
 import org.jenkinsci.lib.xtrigger.AbstractTrigger;
+import org.jenkinsci.lib.xtrigger.XTriggerDescriptor;
 import org.jenkinsci.lib.xtrigger.XTriggerException;
 import org.jenkinsci.lib.xtrigger.XTriggerLog;
-import org.jenkinsci.lib.xtrigger.service.XTriggerEnvVarsResolver;
 import org.jenkinsci.plugins.ivytrigger.service.IvyTriggerEvaluator;
 import org.kohsuke.stapler.DataBoundConstructor;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -54,14 +58,14 @@ public class IvyTrigger extends AbstractTrigger implements Serializable {
             log.info("Starting to record dependencies versions.");
 
             AbstractProject abstractProject = (AbstractProject) job;
-            Node launcherNode = getLauncherNode(log);
+            Node launcherNode = getPollingNode(log);
             if (launcherNode == null) {
                 log.info("Can't find any complete active node. Checking again in next polling schedule.");
                 return;
             }
 
-            XTriggerEnvVarsResolver varsRetriever = new XTriggerEnvVarsResolver();
-            Map<String, String> enVars = varsRetriever.getEnvVars(abstractProject, launcherNode, log);
+            EnvVarsResolver varsRetriever = new EnvVarsResolver();
+            Map<String, String> enVars = varsRetriever.getPollingEnvVars(abstractProject, launcherNode);
 
             FilePath ivyFilePath = getDescriptorFilePath(ivyPath, abstractProject, launcherNode, log, enVars);
             if (ivyFilePath == null) {
@@ -72,6 +76,9 @@ public class IvyTrigger extends AbstractTrigger implements Serializable {
 
             computedDependencies = getDependenciesMapForNode(launcherNode, log, ivyFilePath, ivySettingsFilePath);
         } catch (XTriggerException e) {
+            //Ignore the exception process, just log it
+            LOGGER.log(Level.SEVERE, e.getMessage());
+        } catch (EnvInjectException e) {
             //Ignore the exception process, just log it
             LOGGER.log(Level.SEVERE, e.getMessage());
         } catch (InterruptedException e) {
@@ -114,98 +121,24 @@ public class IvyTrigger extends AbstractTrigger implements Serializable {
         return Collections.singleton(action);
     }
 
-//    /**
-//     * Asynchronous task
-//     */
-//    protected class Runner implements Runnable, Serializable {
-//
-//        private IvyTriggerLog log;
-//
-//        Runner(IvyTriggerLog log) {
-//            this.log = log;
-//        }
-//
-//        public void run() {
-//
-//            try {
-//                long start = System.currentTimeMillis();
-//                log.info("Polling started on " + DateFormat.getDateTimeInstance().format(new Date(start)));
-//                boolean changed = checkIfModified(log);
-//                log.info("Polling complete. Took " + Util.getTimeSpanString(System.currentTimeMillis() - start));
-//                if (changed) {
-//                    log.info("Dependencies have changed. Scheduling a build.");
-//                    job.scheduleBuild(new IvyTriggerCause());
-//                } else {
-//                    log.info("No changes.");
-//                }
-//            } catch (IvyTriggerException e) {
-//                log.error("Polling error " + e.getMessage());
-//            } catch (Throwable e) {
-//                log.error("SEVERE - Polling error " + e.getMessage());
-//            }
-//        }
-//    }
-
-    private Node getLauncherNode(XTriggerLog log) {
-        AbstractProject p = (AbstractProject) job;
-        Label label = p.getAssignedLabel();
-        if (label == null) {
-            log.info("Running on master.");
-            return getLauncherNodeMaster();
-        } else {
-            log.info(String.format("Searching a node to run the polling for the label '%s'.", label));
-            return getLauncherNodeSlave(p, label, log);
-        }
-    }
-
-    private Node getLauncherNodeMaster() {
-        Computer computer = Hudson.getInstance().toComputer();
-        if (computer != null) {
-            return computer.getNode();
-        } else {
-            return null;
-        }
-    }
-
-    private Node getLauncherNodeSlave(AbstractProject project, Label label, XTriggerLog log) {
-        Node lastBuildOnNode = project.getLastBuiltOn();
-        boolean isAPreviousBuildNode = lastBuildOnNode != null;
-
-        Set<Node> nodes = label.getNodes();
-        for (Node node : nodes) {
-            if (node != null) {
-                if (!isAPreviousBuildNode) {
-                    FilePath nodePath = node.getRootPath();
-                    if (nodePath != null) {
-                        log.info(String.format("Running on %s.", node.getNodeName()));
-                        return node;
-                    }
-                } else {
-                    FilePath nodeRootPath = node.getRootPath();
-                    if (nodeRootPath != null) {
-                        if (nodeRootPath.equals(lastBuildOnNode.getRootPath())) {
-                            log.info("Running on " + node.getNodeName());
-                            return lastBuildOnNode;
-                        }
-                    }
-                }
-            }
-        }
-        return null;
-    }
-
     @Override
     protected boolean checkIfModified(XTriggerLog log) throws XTriggerException {
 
         AbstractProject project = (AbstractProject) job;
-        Node launcherNode = getLauncherNode(log);
+
+        Node launcherNode = getPollingNode(log);
         if (launcherNode == null) {
-            log.info("Can't find any complete active node for the polling action. Maybe slaves are not yet active at this time. Checking again in next polling schedule.");
+            log.info("Can't find any complete active node for the polling action. Maybe slaves are not yet active at this time or the number of executor of the master is 0. Checking again in next polling schedule.");
             return false;
         }
 
-        XTriggerEnvVarsResolver varsRetriever = new XTriggerEnvVarsResolver();
-        Map<String, String> envVars = varsRetriever.getEnvVars(project, launcherNode, log);
+        EnvVarsResolver varsRetriever = new EnvVarsResolver();
+        Map<String, String> envVars = null;
+        try {
+            envVars = varsRetriever.getPollingEnvVars(project, launcherNode);
+        } catch (EnvInjectException e) {
+            throw new XTriggerException(e);
+        }
 
         //Get ivy file
         FilePath ivyFilePath = getDescriptorFilePath(ivyPath, project, launcherNode, log, envVars);
@@ -217,7 +150,7 @@ public class IvyTrigger extends AbstractTrigger implements Serializable {
         //Get ivysettings file
         FilePath ivySettingsFilePath = getDescriptorFilePath(ivySettingsPath, project, launcherNode, log, envVars);
 
-        Map<String, String> newComputedDependencies = null;
+        Map<String, String> newComputedDependencies;
         try {
             newComputedDependencies = getDependenciesMapForNode(launcherNode, log, ivyFilePath, ivySettingsFilePath);
         } catch (IOException ioe) {
@@ -226,6 +159,11 @@ public class IvyTrigger extends AbstractTrigger implements Serializable {
             throw new XTriggerException(ie);
         }
         return checkIfModifiedWithResolvedElements(log, newComputedDependencies);
+    }
+
+    @Override
+    protected String getName() {
+        return "IvyTrigger";
     }
 
     private boolean checkIfModifiedWithResolvedElements(XTriggerLog log, Map<String, String> newComputedDependencies) throws XTriggerException {
@@ -301,7 +239,7 @@ public class IvyTrigger extends AbstractTrigger implements Serializable {
             }
 
             //0-- Resolve variables for the path
-            String resolvedFilePath = Util.replaceMacro(filePath, envVars);
+            String resolvedFilePath = resolveEnvVars(filePath, job, launcherNode);
 
             //--Try to look for the file
 
@@ -352,27 +290,8 @@ public class IvyTrigger extends AbstractTrigger implements Serializable {
     }
 
     @Override
-    public void run() {
-
-        if (!Hudson.getInstance().isQuietingDown() && ((AbstractProject) this.job).isBuildable()) {
-            IvyScriptTriggerDescriptor descriptor = getDescriptor();
-            ExecutorService executorService = descriptor.getExecutor();
-            StreamTaskListener listener;
-            try {
-                listener = new StreamTaskListener(getLogFile());
-                XTriggerLog log = new XTriggerLog(listener);
-                if (!Hudson.getInstance().isQuietingDown() && ((AbstractProject) job).isBuildable()) {
-                    Runner runner = new Runner(log, "IvyTrigger");
-                    executorService.execute(runner);
-                } else {
-                    log.info("Jenkins is quieting down or the job is not buildable.");
-                }
-
-            } catch (Throwable t) {
-                LOGGER.log(Level.SEVERE, "Severe Error during the trigger execution " + t.getMessage());
-                t.printStackTrace();
-            }
-        }
+    protected boolean requiresWorkspaceForPolling() {
+        return true;
     }
 
     @Override
@@ -380,25 +299,9 @@ public class IvyTrigger extends AbstractTrigger implements Serializable {
         return "Ivy Dependency trigger";
     }
 
-    @Override
-    public IvyScriptTriggerDescriptor getDescriptor() {
-        return (IvyScriptTriggerDescriptor) Hudson.getInstance().getDescriptorOrDie(getClass());
-    }
-
     @Extension
     @SuppressWarnings("unused")
-    public static class IvyScriptTriggerDescriptor extends TriggerDescriptor {
-
-        private transient final SequentialExecutionQueue queue = new SequentialExecutionQueue(Executors.newSingleThreadExecutor());
-
-        public ExecutorService getExecutor() {
-            return queue.getExecutors();
-        }
-
-        @Override
-        public boolean isApplicable(Item item) {
-            return true;
-        }
+    public static class IvyScriptTriggerDescriptor extends XTriggerDescriptor {
 
         @Override
         public String getHelpFile() {
