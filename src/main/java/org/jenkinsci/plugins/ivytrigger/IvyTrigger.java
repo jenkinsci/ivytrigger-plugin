@@ -63,6 +63,10 @@ public class IvyTrigger extends AbstractTrigger implements Serializable {
                 log.info("Can't find any complete active node. Checking again in next polling schedule.");
                 return;
             }
+            if (launcherNode.getRootPath() == null) {
+                log.info("The running slave might be offline at the moment. Waiting for next schedule.");
+                return;
+            }
 
             EnvVarsResolver varsRetriever = new EnvVarsResolver();
             Map<String, String> enVars = varsRetriever.getPollingEnvVars(abstractProject, launcherNode);
@@ -132,6 +136,11 @@ public class IvyTrigger extends AbstractTrigger implements Serializable {
             return false;
         }
 
+        if (launcherNode.getRootPath() == null) {
+            log.info("The running slave might be offline at the moment. Waiting for next schedule.");
+            return false;
+        }
+
         EnvVarsResolver varsRetriever = new EnvVarsResolver();
         Map<String, String> envVars = null;
         try {
@@ -143,7 +152,7 @@ public class IvyTrigger extends AbstractTrigger implements Serializable {
         //Get ivy file
         FilePath ivyFilePath = getDescriptorFilePath(ivyPath, project, launcherNode, log, envVars);
         if (ivyFilePath == null) {
-            log.error(String.format("The ivy file '%s' doesn't exist.", ivyPath));
+            log.error(String.format("The ivy file '%s' doesn't exist.", ivyFilePath.getRemote()));
             return false;
         }
 
