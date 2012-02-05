@@ -8,8 +8,6 @@ import hudson.model.AbstractProject;
 import hudson.model.Action;
 import hudson.model.BuildableItem;
 import hudson.model.Node;
-import hudson.util.NullStream;
-import hudson.util.StreamTaskListener;
 import org.jenkinsci.lib.envinject.EnvInjectException;
 import org.jenkinsci.lib.envinject.service.EnvVarsResolver;
 import org.jenkinsci.lib.xtrigger.AbstractTrigger;
@@ -41,44 +39,53 @@ public class IvyTrigger extends AbstractTrigger implements Serializable {
 
     private String ivySettingsPath;
 
+    private String propertiesFilePath;
+
     private transient Map<String, String> computedDependencies = new HashMap<String, String>();
 
     @DataBoundConstructor
-    public IvyTrigger(String cronTabSpec, String ivyPath, String ivySettingsPath) throws ANTLRException {
+    public IvyTrigger(String cronTabSpec, String ivyPath, String ivySettingsPath, String propertiesFilePath) throws ANTLRException {
         super(cronTabSpec);
         this.ivyPath = Util.fixEmpty(ivyPath);
         this.ivySettingsPath = Util.fixEmpty(ivySettingsPath);
+        this.propertiesFilePath = Util.fixEmpty(propertiesFilePath);
+    }
+
+    @SuppressWarnings("unused")
+    public String getIvyPath() {
+        return ivyPath;
+    }
+
+    @SuppressWarnings("unused")
+    public String getIvySettingsPath() {
+        return ivySettingsPath;
+    }
+
+    @SuppressWarnings("unused")
+    public String getPropertiesFilePath() {
+        return propertiesFilePath;
     }
 
     @Override
-    public void start(BuildableItem project, boolean newInstance) {
+    public void start(Node pollingNode, BuildableItem project, boolean newInstance, XTriggerLog log) {
         super.start(project, newInstance);
         try {
-            XTriggerLog log = new XTriggerLog(new StreamTaskListener(new NullStream()));
             log.info("Starting to record dependencies versions.");
 
-            AbstractProject abstractProject = (AbstractProject) job;
-            Node launcherNode = getPollingNode(log);
-            if (launcherNode == null) {
-                log.info("Can't find any complete active node. Checking again in next polling schedule.");
-                return;
-            }
-            if (launcherNode.getRootPath() == null) {
-                log.info("The running slave might be offline at the moment. Waiting for next schedule.");
-                return;
-            }
-
+            AbstractProject abstractProject = (AbstractProject) project;
             EnvVarsResolver varsRetriever = new EnvVarsResolver();
-            Map<String, String> enVars = varsRetriever.getPollingEnvVars(abstractProject, launcherNode);
+            Map<String, String> envVars = varsRetriever.getPollingEnvVars(abstractProject, pollingNode);
 
-            FilePath ivyFilePath = getDescriptorFilePath(ivyPath, abstractProject, launcherNode, log, enVars);
+            FilePath ivyFilePath = getDescriptorFilePath(ivyPath, abstractProject, pollingNode, log, envVars);
             if (ivyFilePath == null) {
                 log.error(String.format("The ivy file '%s' doesn't exist.", ivyPath));
                 return;
             }
-            FilePath ivySettingsFilePath = getDescriptorFilePath(ivySettingsPath, abstractProject, launcherNode, log, enVars);
+            FilePath ivySettingsFilePath = getDescriptorFilePath(ivySettingsPath, abstractProject, pollingNode, log, envVars);
 
-            computedDependencies = getDependenciesMapForNode(launcherNode, log, ivyFilePath, ivySettingsFilePath);
+            FilePath dependenciesPropertiesFilePathDescriptor = getDescriptorFilePath(propertiesFilePath, abstractProject, pollingNode, log, envVars);
+
+            computedDependencies = getDependenciesMapForNode(pollingNode, log, ivyFilePath, ivySettingsFilePath, dependenciesPropertiesFilePathDescriptor, envVars);
         } catch (XTriggerException e) {
             //Ignore the exception process, just log it
             LOGGER.log(Level.SEVERE, e.getMessage());
@@ -97,26 +104,17 @@ public class IvyTrigger extends AbstractTrigger implements Serializable {
     private Map<String, String> getDependenciesMapForNode(Node launcherNode,
                                                           XTriggerLog log,
                                                           FilePath ivyFilePath,
-                                                          FilePath ivySettingsFilePath) throws IOException, InterruptedException, XTriggerException {
+                                                          FilePath ivySettingsFilePath,
+                                                          FilePath propertiesFilePath,
+                                                          Map<String, String> envVars) throws IOException, InterruptedException, XTriggerException {
         Map<String, String> dependenciesMap = null;
         if (launcherNode != null) {
             FilePath launcherFilePath = launcherNode.getRootPath();
             if (launcherFilePath != null) {
-                dependenciesMap = launcherFilePath.act(new IvyTriggerEvaluator(ivyFilePath, ivySettingsFilePath, log));
+                dependenciesMap = launcherFilePath.act(new IvyTriggerEvaluator(ivyFilePath, ivySettingsFilePath, propertiesFilePath, log, envVars));
             }
         }
         return dependenciesMap;
-    }
-
-
-    @SuppressWarnings("unused")
-    public String getIvyPath() {
-        return ivyPath;
-    }
-
-    @SuppressWarnings("unused")
-    public String getIvySettingsPath() {
-        return ivySettingsPath;
     }
 
     @Override
@@ -126,42 +124,34 @@ public class IvyTrigger extends AbstractTrigger implements Serializable {
     }
 
     @Override
-    protected boolean checkIfModified(XTriggerLog log) throws XTriggerException {
+    protected boolean checkIfModified(Node pollingNode, XTriggerLog log) throws XTriggerException {
 
         AbstractProject project = (AbstractProject) job;
 
-        Node launcherNode = getPollingNode(log);
-        if (launcherNode == null) {
-            log.info("Can't find any complete active node for the polling action. Maybe slaves are not yet active at this time or the number of executor of the master is 0. Checking again in next polling schedule.");
-            return false;
-        }
-
-        if (launcherNode.getRootPath() == null) {
-            log.info("The running slave might be offline at the moment. Waiting for next schedule.");
-            return false;
-        }
-
         EnvVarsResolver varsRetriever = new EnvVarsResolver();
-        Map<String, String> envVars = null;
+        Map<String, String> envVars;
         try {
-            envVars = varsRetriever.getPollingEnvVars(project, launcherNode);
+            envVars = varsRetriever.getPollingEnvVars(project, pollingNode);
         } catch (EnvInjectException e) {
             throw new XTriggerException(e);
         }
 
         //Get ivy file
-        FilePath ivyFilePath = getDescriptorFilePath(ivyPath, project, launcherNode, log, envVars);
+        FilePath ivyFilePath = getDescriptorFilePath(ivyPath, project, pollingNode, log, envVars);
         if (ivyFilePath == null) {
             log.error(String.format("The ivy file '%s' doesn't exist.", ivyFilePath.getRemote()));
             return false;
         }
 
         //Get ivysettings file
-        FilePath ivySettingsFilePath = getDescriptorFilePath(ivySettingsPath, project, launcherNode, log, envVars);
+        FilePath ivySettingsFilePath = getDescriptorFilePath(ivySettingsPath, project, pollingNode, log, envVars);
+
+        //Get Dependencies
+        FilePath propertiesFilePathDescriptor = getDescriptorFilePath(propertiesFilePath, project, pollingNode, log, envVars);
 
         Map<String, String> newComputedDependencies;
         try {
-            newComputedDependencies = getDependenciesMapForNode(launcherNode, log, ivyFilePath, ivySettingsFilePath);
+            newComputedDependencies = getDependenciesMapForNode(pollingNode, log, ivyFilePath, ivySettingsFilePath, propertiesFilePathDescriptor, envVars);
         } catch (IOException ioe) {
             throw new XTriggerException(ioe);
         } catch (InterruptedException ie) {
@@ -173,6 +163,11 @@ public class IvyTrigger extends AbstractTrigger implements Serializable {
     @Override
     protected String getName() {
         return "IvyTrigger";
+    }
+
+    @Override
+    protected Action[] getScheduledActions(Node pollingNode, XTriggerLog log) {
+        return new Action[0];
     }
 
     private boolean checkIfModifiedWithResolvedElements(XTriggerLog log, Map<String, String> newComputedDependencies) throws XTriggerException {
@@ -216,7 +211,7 @@ public class IvyTrigger extends AbstractTrigger implements Serializable {
         String revision = dependency.getValue();
         String newRevision = newComputedDependencies.get(moduleId);
 
-        log.info(String.format("\nChecking the dependency '%s' ...", moduleId));
+        log.info(String.format("Checking the dependency '%s' ...", moduleId));
 
         if (newRevision == null) {
             log.info("The dependency doesn't exist anymore.");
@@ -237,18 +232,19 @@ public class IvyTrigger extends AbstractTrigger implements Serializable {
 
     private FilePath getDescriptorFilePath(String filePath,
                                            AbstractProject job,
-                                           Node launcherNode,
+                                           Node pollingNode,
                                            XTriggerLog log,
                                            Map<String, String> envVars)
             throws XTriggerException {
         try {
 
+            //If the current file path is not specified, don't compute it
             if (filePath == null) {
                 return null;
             }
 
             //0-- Resolve variables for the path
-            String resolvedFilePath = resolveEnvVars(filePath, job, launcherNode);
+            String resolvedFilePath = Util.replaceMacro(filePath, envVars);
 
             //--Try to look for the file
 
@@ -262,7 +258,7 @@ public class IvyTrigger extends AbstractTrigger implements Serializable {
             }
 
             //The slave is off
-            if (launcherNode == null) {
+            if (pollingNode == null) {
                 //try a full path from the master
                 File file = new File(resolvedFilePath);
                 if (file.exists()) {
@@ -272,7 +268,7 @@ public class IvyTrigger extends AbstractTrigger implements Serializable {
                 return null;
             } else {
 
-                FilePath filePathObject = new FilePath(launcherNode.getRootPath(), resolvedFilePath);
+                FilePath filePathObject = new FilePath(pollingNode.getRootPath(), resolvedFilePath);
 
                 if (filePathObject.exists()) {
                     return filePathObject;
