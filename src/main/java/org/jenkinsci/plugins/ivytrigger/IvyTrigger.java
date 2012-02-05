@@ -68,7 +68,6 @@ public class IvyTrigger extends AbstractTrigger implements Serializable {
 
     @Override
     public void start(Node pollingNode, BuildableItem project, boolean newInstance, XTriggerLog log) {
-        super.start(project, newInstance);
         try {
             log.info("Starting to record dependencies versions.");
 
