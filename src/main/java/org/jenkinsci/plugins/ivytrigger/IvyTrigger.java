@@ -41,14 +41,17 @@ public class IvyTrigger extends AbstractTrigger implements Serializable {
 
     private String propertiesFilePath;
 
+    private String propertiesContent;
+
     private transient Map<String, String> computedDependencies = new HashMap<String, String>();
 
     @DataBoundConstructor
-    public IvyTrigger(String cronTabSpec, String ivyPath, String ivySettingsPath, String propertiesFilePath) throws ANTLRException {
+    public IvyTrigger(String cronTabSpec, String ivyPath, String ivySettingsPath, String propertiesFilePath, String propertiesContent) throws ANTLRException {
         super(cronTabSpec);
         this.ivyPath = Util.fixEmpty(ivyPath);
         this.ivySettingsPath = Util.fixEmpty(ivySettingsPath);
         this.propertiesFilePath = Util.fixEmpty(propertiesFilePath);
+        this.propertiesContent = Util.fixEmpty(propertiesContent);
     }
 
     @SuppressWarnings("unused")
@@ -64,6 +67,11 @@ public class IvyTrigger extends AbstractTrigger implements Serializable {
     @SuppressWarnings("unused")
     public String getPropertiesFilePath() {
         return propertiesFilePath;
+    }
+
+    @SuppressWarnings("unused")
+    public String getPropertiesContent() {
+        return propertiesContent;
     }
 
     @Override
@@ -84,7 +92,9 @@ public class IvyTrigger extends AbstractTrigger implements Serializable {
 
             FilePath dependenciesPropertiesFilePathDescriptor = getDescriptorFilePath(propertiesFilePath, abstractProject, pollingNode, log, envVars);
 
-            computedDependencies = getDependenciesMapForNode(pollingNode, log, ivyFilePath, ivySettingsFilePath, dependenciesPropertiesFilePathDescriptor, envVars);
+            String propertiesContentResolved = Util.replaceMacro(propertiesContent, envVars);
+
+            computedDependencies = getDependenciesMapForNode(pollingNode, log, ivyFilePath, ivySettingsFilePath, dependenciesPropertiesFilePathDescriptor, propertiesContentResolved, envVars);
         } catch (XTriggerException e) {
             //Ignore the exception process, just log it
             LOGGER.log(Level.SEVERE, e.getMessage());
@@ -105,12 +115,13 @@ public class IvyTrigger extends AbstractTrigger implements Serializable {
                                                           FilePath ivyFilePath,
                                                           FilePath ivySettingsFilePath,
                                                           FilePath propertiesFilePath,
+                                                          String propertiesContent,
                                                           Map<String, String> envVars) throws IOException, InterruptedException, XTriggerException {
         Map<String, String> dependenciesMap = null;
         if (launcherNode != null) {
             FilePath launcherFilePath = launcherNode.getRootPath();
             if (launcherFilePath != null) {
-                dependenciesMap = launcherFilePath.act(new IvyTriggerEvaluator(ivyFilePath, ivySettingsFilePath, propertiesFilePath, log, envVars));
+                dependenciesMap = launcherFilePath.act(new IvyTriggerEvaluator(ivyFilePath, ivySettingsFilePath, propertiesFilePath, propertiesContent, log, envVars));
             }
         }
         return dependenciesMap;
@@ -148,9 +159,12 @@ public class IvyTrigger extends AbstractTrigger implements Serializable {
         //Get Dependencies
         FilePath propertiesFilePathDescriptor = getDescriptorFilePath(propertiesFilePath, project, pollingNode, log, envVars);
 
+        //Interpret each variables from the envVars
+        String propertiesContentResolved = Util.replaceMacro(propertiesContent, envVars);
+
         Map<String, String> newComputedDependencies;
         try {
-            newComputedDependencies = getDependenciesMapForNode(pollingNode, log, ivyFilePath, ivySettingsFilePath, propertiesFilePathDescriptor, envVars);
+            newComputedDependencies = getDependenciesMapForNode(pollingNode, log, ivyFilePath, ivySettingsFilePath, propertiesFilePathDescriptor, propertiesContentResolved, envVars);
         } catch (IOException ioe) {
             throw new XTriggerException(ioe);
         } catch (InterruptedException ie) {

@@ -14,6 +14,7 @@ import org.jenkinsci.lib.xtrigger.XTriggerLog;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.StringReader;
 import java.text.ParseException;
 import java.util.HashMap;
 import java.util.List;
@@ -31,6 +32,8 @@ public class IvyTriggerEvaluator implements Callable<Map<String, String>, XTrigg
 
     private FilePath propertiesFilePath;
 
+    private String propertiesContent;
+
     private XTriggerLog log;
 
     private Map<String, String> envVars;
@@ -38,11 +41,13 @@ public class IvyTriggerEvaluator implements Callable<Map<String, String>, XTrigg
     public IvyTriggerEvaluator(FilePath ivyFilePath,
                                FilePath ivySettingsFilePath,
                                FilePath propertiesFilePath,
+                               String propertiesContent,
                                XTriggerLog log,
                                Map<String, String> envVars) {
         this.ivyFilePath = ivyFilePath;
         this.ivySettingsFilePath = ivySettingsFilePath;
         this.propertiesFilePath = propertiesFilePath;
+        this.propertiesContent = propertiesContent;
         this.log = log;
         this.envVars = envVars;
     }
@@ -101,6 +106,16 @@ public class IvyTriggerEvaluator implements Callable<Map<String, String>, XTrigg
                     );
                 } catch (InterruptedException e) {
                     throw new XTriggerException(e);
+                }
+            }
+
+            if (propertiesContent != null) {
+                Properties properties = new Properties();
+                StringReader stringReader = new StringReader(propertiesContent);
+                properties.load(stringReader);
+                stringReader.close();
+                for (Map.Entry<Object, Object> entry : properties.entrySet()) {
+                    ivy.setVariable(String.valueOf(entry.getKey()), String.valueOf(entry.getValue()));
                 }
             }
         } catch (ParseException pe) {
