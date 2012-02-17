@@ -55,12 +55,29 @@ public class IvyTriggerEvaluator implements Callable<Map<String, String>, XTrigg
     public Map<String, String> call() throws XTriggerException {
         Map<String, String> result;
         try {
-            log.info(String.format("Recording dependencies versions of the given Ivy path '%s'.", ivyFilePath));
+            log.info("Resolving Ivy dependencies.");
+            log.info(String.format("Ivy path: %s", ivyFilePath));
             ResolveReport resolveReport;
             Ivy ivy = getIvyObject(log);
+
             resolveReport = ivy.resolve(new File(ivyFilePath.getRemote()));
+
+            if (resolveReport.hasError()) {
+                List<String> problems = resolveReport.getAllProblemMessages();
+                if (problems != null && !problems.isEmpty()) {
+                    StringBuffer errorMsgs = new StringBuffer();
+                    errorMsgs.append("Errors:\n");
+                    for (String problem : problems) {
+                        errorMsgs.append(problem);
+                        errorMsgs.append("\n");
+                    }
+                    log.error(errorMsgs.toString());
+                }
+            }
+
             List dependencies = resolveReport.getDependencies();
             result = getMapDependencies(dependencies);
+
         } catch (ParseException pe) {
             throw new XTriggerException(pe);
         } catch (IOException ioe) {
@@ -75,10 +92,10 @@ public class IvyTriggerEvaluator implements Callable<Map<String, String>, XTrigg
         final Ivy ivy = Ivy.newInstance();
         try {
             if (ivySettingsFilePath == null) {
-                log.info("Ivy is configured using default 2.0 settings.");
+                log.info("Ivy settings: default 2.0 settings");
                 ivy.configureDefault();
             } else {
-                log.info(String.format("Ivy is configured using the Ivy settings '%s'.", ivySettingsFilePath.getRemote()));
+                log.info(String.format("Ivy settings: %s", ivySettingsFilePath.getRemote()));
                 ivy.configure(new File(ivySettingsFilePath.getRemote()));
             }
 

@@ -156,10 +156,8 @@ public class IvyTrigger extends AbstractTrigger implements Serializable {
         //Get ivysettings file
         FilePath ivySettingsFilePath = getDescriptorFilePath(ivySettingsPath, project, pollingNode, log, envVars);
 
-        //Get Dependencies
+        //Get properties info
         FilePath propertiesFilePathDescriptor = getDescriptorFilePath(propertiesFilePath, project, pollingNode, log, envVars);
-
-        //Interpret each variables from the envVars
         String propertiesContentResolved = Util.replaceMacro(propertiesContent, envVars);
 
         Map<String, String> newComputedDependencies;
@@ -185,6 +183,7 @@ public class IvyTrigger extends AbstractTrigger implements Serializable {
 
     private boolean checkIfModifiedWithResolvedElements(XTriggerLog log, Map<String, String> newComputedDependencies) throws XTriggerException {
 
+        //Check pre-requirements
         if (newComputedDependencies == null) {
             log.error("Can't record the new dependencies graph.");
             computedDependencies = null;
@@ -199,23 +198,33 @@ public class IvyTrigger extends AbstractTrigger implements Serializable {
 
         if (computedDependencies == null) {
             computedDependencies = newComputedDependencies;
-            log.info("Recording dependencies versions. Waiting for next schedule.");
+            log.info("Recording dependencies state. Waiting for next schedule.");
             return false;
         }
 
         if (computedDependencies.size() != newComputedDependencies.size()) {
-            log.info(String.format("The dependencies size has changed."));
+            log.info(String.format("Computed dependencies set size has changed."));
             computedDependencies = newComputedDependencies;
             return true;
         }
 
+        //Display all dependencies
+        log.info("Checking dependencies");
         for (Map.Entry<String, String> dependency : computedDependencies.entrySet()) {
-            if (isChangedDependency(log, dependency, newComputedDependencies)) {
-                return true;
-            }
+            log.info(String.format("Checking the dependency '%s' ...", dependency.getKey()));
         }
 
-        computedDependencies = newComputedDependencies;
+        //Check if at least one changes
+        try {
+            for (Map.Entry<String, String> dependency : computedDependencies.entrySet()) {
+                if (isChangedDependency(log, dependency, newComputedDependencies)) {
+                    return true;
+                }
+            }
+        } finally {
+            computedDependencies = newComputedDependencies;
+        }
+
         return false;
     }
 
@@ -223,8 +232,6 @@ public class IvyTrigger extends AbstractTrigger implements Serializable {
         String moduleId = dependency.getKey();
         String revision = dependency.getValue();
         String newRevision = newComputedDependencies.get(moduleId);
-
-        log.info(String.format("Checking the dependency '%s' ...", moduleId));
 
         if (newRevision == null) {
             log.info("The dependency doesn't exist anymore.");
