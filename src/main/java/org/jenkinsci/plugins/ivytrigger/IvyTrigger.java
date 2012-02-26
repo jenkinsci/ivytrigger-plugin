@@ -6,11 +6,10 @@ import hudson.FilePath;
 import hudson.Util;
 import hudson.model.AbstractProject;
 import hudson.model.Action;
-import hudson.model.BuildableItem;
 import hudson.model.Node;
 import org.jenkinsci.lib.envinject.EnvInjectException;
 import org.jenkinsci.lib.envinject.service.EnvVarsResolver;
-import org.jenkinsci.lib.xtrigger.AbstractTrigger;
+import org.jenkinsci.lib.xtrigger.AbstractTriggerByFullContext;
 import org.jenkinsci.lib.xtrigger.XTriggerDescriptor;
 import org.jenkinsci.lib.xtrigger.XTriggerException;
 import org.jenkinsci.lib.xtrigger.XTriggerLog;
@@ -22,18 +21,13 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 
 /**
  * @author Gregory Boissinot
  */
-public class IvyTrigger extends AbstractTrigger implements Serializable {
-
-    private static Logger LOGGER = Logger.getLogger(IvyTrigger.class.getName());
+public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> implements Serializable {
 
     private String ivyPath;
 
@@ -42,8 +36,6 @@ public class IvyTrigger extends AbstractTrigger implements Serializable {
     private String propertiesFilePath;
 
     private String propertiesContent;
-
-    private transient Map<String, String> computedDependencies = new HashMap<String, String>();
 
     @DataBoundConstructor
     public IvyTrigger(String cronTabSpec, String ivyPath, String ivySettingsPath, String propertiesFilePath, String propertiesContent) throws ANTLRException {
@@ -75,39 +67,46 @@ public class IvyTrigger extends AbstractTrigger implements Serializable {
     }
 
     @Override
-    public void start(Node pollingNode, BuildableItem project, boolean newInstance, XTriggerLog log) {
+    public Collection<? extends Action> getProjectActions() {
+        IvyTriggerAction action = new IvyTriggerAction((AbstractProject) job, getLogFile(), this.getDescriptor().getDisplayName());
+        return Collections.singleton(action);
+    }
+
+    @Override
+    protected IvyTriggerContext getContext(Node pollingNode, XTriggerLog log) throws XTriggerException {
+        AbstractProject project = (AbstractProject) job;
+
+        EnvVarsResolver varsRetriever = new EnvVarsResolver();
+        Map<String, String> envVars;
         try {
-            log.info("Starting to record dependencies versions.");
-
-            AbstractProject abstractProject = (AbstractProject) project;
-            EnvVarsResolver varsRetriever = new EnvVarsResolver();
-            Map<String, String> envVars = varsRetriever.getPollingEnvVars(abstractProject, pollingNode);
-
-            FilePath ivyFilePath = getDescriptorFilePath(ivyPath, abstractProject, pollingNode, log, envVars);
-            if (ivyFilePath == null) {
-                log.error(String.format("The ivy file '%s' doesn't exist.", ivyPath));
-                return;
-            }
-            FilePath ivySettingsFilePath = getDescriptorFilePath(ivySettingsPath, abstractProject, pollingNode, log, envVars);
-
-            FilePath dependenciesPropertiesFilePathDescriptor = getDescriptorFilePath(propertiesFilePath, abstractProject, pollingNode, log, envVars);
-
-            String propertiesContentResolved = Util.replaceMacro(propertiesContent, envVars);
-
-            computedDependencies = getDependenciesMapForNode(pollingNode, log, ivyFilePath, ivySettingsFilePath, dependenciesPropertiesFilePathDescriptor, propertiesContentResolved, envVars);
-        } catch (XTriggerException e) {
-            //Ignore the exception process, just log it
-            LOGGER.log(Level.SEVERE, e.getMessage());
+            envVars = varsRetriever.getPollingEnvVars(project, pollingNode);
         } catch (EnvInjectException e) {
-            //Ignore the exception process, just log it
-            LOGGER.log(Level.SEVERE, e.getMessage());
-        } catch (InterruptedException e) {
-            //Ignore the exception process, just log it
-            LOGGER.log(Level.SEVERE, e.getMessage());
-        } catch (IOException e) {
-            //Ignore the exception process, just log it
-            LOGGER.log(Level.SEVERE, e.getMessage());
+            throw new XTriggerException(e);
         }
+
+        //Get ivy file
+        FilePath ivyFilePath = getDescriptorFilePath(ivyPath, project, pollingNode, log, envVars);
+        if (ivyFilePath == null) {
+            log.error(String.format("The ivy file '%s' doesn't exist.", ivyFilePath.getRemote()));
+            return new IvyTriggerContext(null);
+        }
+
+        //Get ivysettings file
+        FilePath ivySettingsFilePath = getDescriptorFilePath(ivySettingsPath, project, pollingNode, log, envVars);
+
+        //Get properties info
+        FilePath propertiesFilePathDescriptor = getDescriptorFilePath(propertiesFilePath, project, pollingNode, log, envVars);
+        String propertiesContentResolved = Util.replaceMacro(propertiesContent, envVars);
+
+        Map<String, String> dependencies;
+        try {
+            dependencies = getDependenciesMapForNode(pollingNode, log, ivyFilePath, ivySettingsFilePath, propertiesFilePathDescriptor, propertiesContentResolved, envVars);
+        } catch (IOException ioe) {
+            throw new XTriggerException(ioe);
+        } catch (InterruptedException ie) {
+            throw new XTriggerException(ie);
+        }
+        return new IvyTriggerContext(dependencies);
     }
 
     private Map<String, String> getDependenciesMapForNode(Node launcherNode,
@@ -128,50 +127,6 @@ public class IvyTrigger extends AbstractTrigger implements Serializable {
     }
 
     @Override
-    public Collection<? extends Action> getProjectActions() {
-        IvyTriggerAction action = new IvyTriggerAction((AbstractProject) job, getLogFile(), this.getDescriptor().getDisplayName());
-        return Collections.singleton(action);
-    }
-
-    @Override
-    protected boolean checkIfModified(Node pollingNode, XTriggerLog log) throws XTriggerException {
-
-        AbstractProject project = (AbstractProject) job;
-
-        EnvVarsResolver varsRetriever = new EnvVarsResolver();
-        Map<String, String> envVars;
-        try {
-            envVars = varsRetriever.getPollingEnvVars(project, pollingNode);
-        } catch (EnvInjectException e) {
-            throw new XTriggerException(e);
-        }
-
-        //Get ivy file
-        FilePath ivyFilePath = getDescriptorFilePath(ivyPath, project, pollingNode, log, envVars);
-        if (ivyFilePath == null) {
-            log.error(String.format("The ivy file '%s' doesn't exist.", ivyFilePath.getRemote()));
-            return false;
-        }
-
-        //Get ivysettings file
-        FilePath ivySettingsFilePath = getDescriptorFilePath(ivySettingsPath, project, pollingNode, log, envVars);
-
-        //Get properties info
-        FilePath propertiesFilePathDescriptor = getDescriptorFilePath(propertiesFilePath, project, pollingNode, log, envVars);
-        String propertiesContentResolved = Util.replaceMacro(propertiesContent, envVars);
-
-        Map<String, String> newComputedDependencies;
-        try {
-            newComputedDependencies = getDependenciesMapForNode(pollingNode, log, ivyFilePath, ivySettingsFilePath, propertiesFilePathDescriptor, propertiesContentResolved, envVars);
-        } catch (IOException ioe) {
-            throw new XTriggerException(ioe);
-        } catch (InterruptedException ie) {
-            throw new XTriggerException(ie);
-        }
-        return checkIfModifiedWithResolvedElements(log, newComputedDependencies);
-    }
-
-    @Override
     protected String getName() {
         return "IvyTrigger";
     }
@@ -181,7 +136,11 @@ public class IvyTrigger extends AbstractTrigger implements Serializable {
         return new Action[0];
     }
 
-    private boolean checkIfModifiedWithResolvedElements(XTriggerLog log, Map<String, String> newComputedDependencies) throws XTriggerException {
+    @Override
+    protected boolean checkIfModified(IvyTriggerContext oldIvyTriggerContext, IvyTriggerContext newIvyTriggerContext, XTriggerLog log) throws XTriggerException {
+
+        Map<String, String> computedDependencies = oldIvyTriggerContext.getDependencies();
+        Map<String, String> newComputedDependencies = newIvyTriggerContext.getDependencies();
 
         //Check pre-requirements
         if (newComputedDependencies == null) {
@@ -196,6 +155,12 @@ public class IvyTrigger extends AbstractTrigger implements Serializable {
             return false;
         }
 
+        //Display all resolved dependencies
+        log.info("The resolved dependencies are:");
+        for (Map.Entry<String, String> dependency : newComputedDependencies.entrySet()) {
+            log.info(String.format("Dependency '%s' ...", dependency.getKey()));
+        }
+
         if (computedDependencies == null) {
             computedDependencies = newComputedDependencies;
             log.info("Recording dependencies state. Waiting for next schedule.");
@@ -208,21 +173,12 @@ public class IvyTrigger extends AbstractTrigger implements Serializable {
             return true;
         }
 
-        //Display all dependencies
-        log.info("Checking dependencies");
-        for (Map.Entry<String, String> dependency : computedDependencies.entrySet()) {
-            log.info(String.format("Checking the dependency '%s' ...", dependency.getKey()));
-        }
-
         //Check if at least one changes
-        try {
-            for (Map.Entry<String, String> dependency : computedDependencies.entrySet()) {
-                if (isChangedDependency(log, dependency, newComputedDependencies)) {
-                    return true;
-                }
+        log.info("\nChecking changes to previous recording dependencies");
+        for (Map.Entry<String, String> dependency : computedDependencies.entrySet()) {
+            if (isChangedDependency(log, dependency, newComputedDependencies)) {
+                return true;
             }
-        } finally {
-            computedDependencies = newComputedDependencies;
         }
 
         return false;
@@ -231,11 +187,11 @@ public class IvyTrigger extends AbstractTrigger implements Serializable {
     private boolean isChangedDependency(XTriggerLog log, Map.Entry<String, String> dependency, Map<String, String> newComputedDependencies) {
         String moduleId = dependency.getKey();
         String revision = dependency.getValue();
+
         String newRevision = newComputedDependencies.get(moduleId);
 
         if (newRevision == null) {
             log.info("The dependency doesn't exist anymore.");
-            computedDependencies = newComputedDependencies;
             return true;
         }
 
@@ -243,7 +199,6 @@ public class IvyTrigger extends AbstractTrigger implements Serializable {
             log.info("The dependency version has changed.");
             log.info(String.format("The previous version recorded was %s.", revision));
             log.info(String.format("The new computed version is %s.", newRevision));
-            computedDependencies = newComputedDependencies;
             return true;
         }
 

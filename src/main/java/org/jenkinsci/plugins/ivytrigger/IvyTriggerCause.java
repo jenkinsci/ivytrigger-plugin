@@ -9,7 +9,7 @@ import org.jenkinsci.lib.xtrigger.XTriggerCause;
 public class IvyTriggerCause extends XTriggerCause {
 
     public IvyTriggerCause(String causeFrom) {
-        super("IvyTrigger", causeFrom);
+        super("IvyTrigger", causeFrom, false);
 
     }
 }
