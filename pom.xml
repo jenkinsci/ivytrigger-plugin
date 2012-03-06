@@ -24,13 +24,14 @@
         <developer>
             <id>gbois</id>
             <name>Gregory Boissinot</name>
+            <email>gregory.boissinot@gmail.com</email>
             <timezone>+1</timezone>
         </developer>
     </developers>
 
     <properties>
         <ivy.version>2.2.0</ivy.version>
-        <xtrigger.lib.version>0.8</xtrigger.lib.version>
+        <xtrigger.lib.version>0.9</xtrigger.lib.version>
     </properties>
 
     <dependencies>
