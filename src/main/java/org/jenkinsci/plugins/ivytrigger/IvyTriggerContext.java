@@ -10,13 +10,13 @@ import java.util.Map;
  */
 public class IvyTriggerContext implements XTriggerContext {
 
-    private Map<String, String> dependencies = new HashMap<String, String>();
+    private Map<String, IvyDependencyValue> dependencies = new HashMap<String, IvyDependencyValue>();
 
-    public IvyTriggerContext(Map<String, String> dependencies) {
+    public IvyTriggerContext(Map<String, IvyDependencyValue> dependencies) {
         this.dependencies = dependencies;
     }
 
-    public Map<String, String> getDependencies() {
+    public Map<String, IvyDependencyValue> getDependencies() {
         return dependencies;
     }
 }

@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 
@@ -73,6 +74,11 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
     }
 
     @Override
+    public boolean isContextOnStartupFetched() {
+        return false;
+    }
+
+    @Override
     protected IvyTriggerContext getContext(Node pollingNode, XTriggerLog log) throws XTriggerException {
         AbstractProject project = (AbstractProject) job;
 
@@ -87,7 +93,7 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
         //Get ivy file
         FilePath ivyFilePath = getDescriptorFilePath(ivyPath, project, pollingNode, log, envVars);
         if (ivyFilePath == null) {
-            log.error(String.format("The ivy file '%s' doesn't exist.", ivyFilePath.getRemote()));
+            log.error(String.format("The ivy file path '%s' doesn't exist.", ivyPath));
             return new IvyTriggerContext(null);
         }
 
@@ -98,7 +104,7 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
         FilePath propertiesFilePathDescriptor = getDescriptorFilePath(propertiesFilePath, project, pollingNode, log, envVars);
         String propertiesContentResolved = Util.replaceMacro(propertiesContent, envVars);
 
-        Map<String, String> dependencies;
+        Map<String, IvyDependencyValue> dependencies;
         try {
             dependencies = getDependenciesMapForNode(pollingNode, log, ivyFilePath, ivySettingsFilePath, propertiesFilePathDescriptor, propertiesContentResolved, envVars);
         } catch (IOException ioe) {
@@ -109,18 +115,18 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
         return new IvyTriggerContext(dependencies);
     }
 
-    private Map<String, String> getDependenciesMapForNode(Node launcherNode,
-                                                          XTriggerLog log,
-                                                          FilePath ivyFilePath,
-                                                          FilePath ivySettingsFilePath,
-                                                          FilePath propertiesFilePath,
-                                                          String propertiesContent,
-                                                          Map<String, String> envVars) throws IOException, InterruptedException, XTriggerException {
-        Map<String, String> dependenciesMap = null;
+    private Map<String, IvyDependencyValue> getDependenciesMapForNode(Node launcherNode,
+                                                                      XTriggerLog log,
+                                                                      FilePath ivyFilePath,
+                                                                      FilePath ivySettingsFilePath,
+                                                                      FilePath propertiesFilePath,
+                                                                      String propertiesContent,
+                                                                      Map<String, String> envVars) throws IOException, InterruptedException, XTriggerException {
+        Map<String, IvyDependencyValue> dependenciesMap = null;
         if (launcherNode != null) {
             FilePath launcherFilePath = launcherNode.getRootPath();
             if (launcherFilePath != null) {
-                dependenciesMap = launcherFilePath.act(new IvyTriggerEvaluator(ivyFilePath, ivySettingsFilePath, propertiesFilePath, propertiesContent, log, envVars));
+                dependenciesMap = launcherFilePath.act(new IvyTriggerEvaluator(job.getName(), ivyFilePath, ivySettingsFilePath, propertiesFilePath, propertiesContent, log, envVars));
             }
         }
         return dependenciesMap;
@@ -137,46 +143,43 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
     }
 
     @Override
-    protected boolean checkIfModified(IvyTriggerContext oldIvyTriggerContext, IvyTriggerContext newIvyTriggerContext, XTriggerLog log) throws XTriggerException {
+    protected boolean checkIfModified(IvyTriggerContext previousIvyTriggerContext,
+                                      IvyTriggerContext newIvyTriggerContext,
+                                      XTriggerLog log)
+            throws XTriggerException {
 
-        Map<String, String> computedDependencies = oldIvyTriggerContext.getDependencies();
-        Map<String, String> newComputedDependencies = newIvyTriggerContext.getDependencies();
+        Map<String, IvyDependencyValue> previousDependencies = previousIvyTriggerContext.getDependencies();
+        Map<String, IvyDependencyValue> newComputedDependencies = newIvyTriggerContext.getDependencies();
 
         //Check pre-requirements
         if (newComputedDependencies == null) {
             log.error("Can't record the new dependencies graph.");
-            computedDependencies = null;
             return false;
         }
 
         if (newComputedDependencies.size() == 0) {
             log.error("Can't compute any dependencies. Check your settings.");
-            computedDependencies = null;
             return false;
         }
 
         //Display all resolved dependencies
-        log.info("The resolved dependencies are:");
-        for (Map.Entry<String, String> dependency : newComputedDependencies.entrySet()) {
-            log.info(String.format("Dependency '%s' ...", dependency.getKey()));
+        for (Map.Entry<String, IvyDependencyValue> dependency : newComputedDependencies.entrySet()) {
+            log.info(String.format("Checking resolved dependency %s ...", dependency.getKey()));
         }
 
-        if (computedDependencies == null) {
-            computedDependencies = newComputedDependencies;
-            log.info("Recording dependencies state. Waiting for next schedule.");
+        if (previousDependencies == null) {
+            log.info("Recording dependencies state. Waiting for next schedule to compare changes between polls.");
             return false;
         }
 
-        if (computedDependencies.size() != newComputedDependencies.size()) {
-            log.info(String.format("Computed dependencies set size has changed."));
-            computedDependencies = newComputedDependencies;
+        if (previousDependencies.size() != newComputedDependencies.size()) {
+            log.info(String.format("The number of computed dependencies has changed."));
             return true;
         }
 
-        //Check if at least one changes
-        log.info("\nChecking changes to previous recording dependencies");
-        for (Map.Entry<String, String> dependency : computedDependencies.entrySet()) {
-            if (isChangedDependency(log, dependency, newComputedDependencies)) {
+        //Check if there is at least one change
+        for (Map.Entry<String, IvyDependencyValue> dependency : previousDependencies.entrySet()) {
+            if (isDependencyChanged(log, dependency, newComputedDependencies)) {
                 return true;
             }
         }
@@ -184,21 +187,85 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
         return false;
     }
 
-    private boolean isChangedDependency(XTriggerLog log, Map.Entry<String, String> dependency, Map<String, String> newComputedDependencies) {
-        String moduleId = dependency.getKey();
-        String revision = dependency.getValue();
+    private boolean isDependencyChanged(XTriggerLog log,
+                                        Map.Entry<String, IvyDependencyValue> previousDependency,
+                                        Map<String, IvyDependencyValue> newComputedDependencies) {
 
-        String newRevision = newComputedDependencies.get(moduleId);
 
-        if (newRevision == null) {
-            log.info("The dependency doesn't exist anymore.");
+        String moduleId = previousDependency.getKey();
+        IvyDependencyValue previousDependencyValue = previousDependency.getValue();
+        IvyDependencyValue newDependencyValue = newComputedDependencies.get(moduleId);
+
+        //Check if the previous dependency exists anymore
+        if (newDependencyValue == null) {
+            log.info(String.format("The dependency doesn't exist anymore."));
             return true;
         }
 
-        if (!newRevision.equals(revision)) {
+        //Check if the revision has changed
+        String previousRevision = previousDependencyValue.getRevision();
+        String newRevision = newDependencyValue.getRevision();
+        if (!newRevision.equals(previousRevision)) {
             log.info("The dependency version has changed.");
-            log.info(String.format("The previous version recorded was %s.", revision));
+            log.info(String.format("The previous version recorded was %s.", previousRevision));
             log.info(String.format("The new computed version is %s.", newRevision));
+            return true;
+        }
+
+        //Check if artifacts list has changed
+        List<IvyArtifactValue> previousArtifactValueList = previousDependencyValue.getArtifacts();
+        List<IvyArtifactValue> newArtifactValueList = newDependencyValue.getArtifacts();
+
+        //Display all resolved artifacts
+        log.info("\n");
+        for (IvyArtifactValue artifactValue : newArtifactValueList) {
+            log.info(String.format("Checking resolved artifact %s ...", artifactValue.getName()));
+        }
+
+        if (previousArtifactValueList.size() != newArtifactValueList.size()) {
+            log.info("The number of artifacts of the dependency has changed.");
+        }
+
+        //Check if there is at least one change to previous recording artifacts
+        for (IvyArtifactValue ivyArtifactValue : previousArtifactValueList) {
+            if (isArtifactsChanged(log, ivyArtifactValue, newArtifactValueList)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private boolean isArtifactsChanged(XTriggerLog log, IvyArtifactValue previousIvyArtifactValue, List<IvyArtifactValue> newArtifactValueList) {
+
+        //Get the new artifact with same coordinates
+        IvyArtifactValue newIvyArtifactValue = null;
+        boolean stop = false;
+        int i = 0;
+        while (!stop && i < newArtifactValueList.size()) {
+            IvyArtifactValue ivyArtifactValue = newArtifactValueList.get(i);
+            if (ivyArtifactValue.getName().equals(previousIvyArtifactValue.getName())) {
+                newIvyArtifactValue = ivyArtifactValue;
+                stop = true;
+            }
+            i++;
+        }
+
+        //--Check if there are changes
+
+        //Check if the artifact still exist
+        if (newIvyArtifactValue == null) {
+            log.info(String.format("The previous artifact %s doesn't exist anymore.", previousIvyArtifactValue.getName()));
+            return true;
+        }
+
+        //Check the publication date
+        long previousPublicationDate = previousIvyArtifactValue.getLastModificationDate();
+        long newPublicationDate = newIvyArtifactValue.getLastModificationDate();
+        if (previousPublicationDate != newPublicationDate) {
+            log.info("The dependency version has changed.");
+            log.info(String.format("The previous publication date recorded was %s.", previousPublicationDate));
+            log.info(String.format("The new computed publication date is %s.", newPublicationDate));
             return true;
         }
 
