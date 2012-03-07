@@ -1,7 +1,9 @@
 package org.jenkinsci.plugins.ivytrigger.service;
 
 import hudson.FilePath;
+import hudson.Util;
 import hudson.remoting.VirtualChannel;
+import org.apache.commons.io.FileUtils;
 import org.apache.ivy.Ivy;
 import org.apache.ivy.core.cache.ArtifactOrigin;
 import org.apache.ivy.core.cache.DefaultRepositoryCacheManager;
@@ -18,10 +20,7 @@ import org.jenkinsci.lib.xtrigger.XTriggerLog;
 import org.jenkinsci.plugins.ivytrigger.IvyArtifactValue;
 import org.jenkinsci.plugins.ivytrigger.IvyDependencyValue;
 
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.StringReader;
+import java.io.*;
 import java.text.ParseException;
 import java.util.*;
 
@@ -97,6 +96,8 @@ public class IvyTriggerEvaluator implements FilePath.FileCallable<Map<String, Iv
 
     private Ivy getIvyObject(File launchDir, XTriggerLog log) throws XTriggerException {
 
+        Map<String, String> variables = getVariables();
+
         final Ivy ivy = Ivy.newInstance();
         try {
 
@@ -105,37 +106,58 @@ public class IvyTriggerEvaluator implements FilePath.FileCallable<Map<String, Iv
                 ivy.configureDefault();
             } else {
                 log.info(String.format("Ivy settings: %s", ivySettingsFilePath.getRemote()));
-                ivy.configure(new File(ivySettingsFilePath.getRemote()));
+                String settingsContent = FileUtils.readFileToString(new File(ivySettingsFilePath.getRemote()));
+                String settingsContentResolved = Util.replaceMacro(settingsContent, variables);
+                File tempSettings = File.createTempFile("file", ".tmp");
+                BufferedWriter out = new BufferedWriter(new FileWriter(tempSettings));
+                out.write(settingsContentResolved);
+                out.close();
+                ivy.configure(tempSettings);
+                tempSettings.delete();
             }
 
             IvySettings ivySettings = ivy.getSettings();
             ivySettings.setDefaultCache(getAndInitCacheDir(launchDir));
 
+            for (Map.Entry<String, String> entry : variables.entrySet()) {
+                ivy.setVariable(entry.getKey(), entry.getValue());
+            }
+            ivySettings.addAllVariables(variables);
+
+
+        } catch (ParseException pe) {
+            throw new XTriggerException(pe);
+        } catch (IOException ioe) {
+            throw new XTriggerException(ioe);
+        }
+        return ivy;
+    }
+
+
+    private Map<String, String> getVariables() throws XTriggerException {
+        final Map<String, String> variables = new HashMap<String, String>();
+        try {
+
             //Inject variables from dependencies properties and envVars
             if (envVars != null) {
-                for (Map.Entry<String, String> entryVar : envVars.entrySet()) {
-                    ivy.setVariable(entryVar.getKey(), entryVar.getValue());
-                }
+                variables.putAll(envVars);
             }
 
             if (propertiesFilePath != null) {
-                try {
-                    propertiesFilePath.act(new FilePath.FileCallable<Void>() {
-                        public Void invoke(File f, VirtualChannel channel) throws IOException, InterruptedException {
-                            Properties properties = new Properties();
-                            FileReader fileReader = new FileReader(propertiesFilePath.getRemote());
-                            properties.load(fileReader);
-                            fileReader.close();
-                            for (Map.Entry<Object, Object> entry : properties.entrySet()) {
-                                ivy.setVariable(String.valueOf(entry.getKey()), String.valueOf(entry.getValue()));
-                            }
-                            return null;
+
+                propertiesFilePath.act(new FilePath.FileCallable<Void>() {
+                    public Void invoke(File f, VirtualChannel channel) throws IOException, InterruptedException {
+                        Properties properties = new Properties();
+                        FileReader fileReader = new FileReader(propertiesFilePath.getRemote());
+                        properties.load(fileReader);
+                        fileReader.close();
+                        for (Map.Entry<Object, Object> entry : properties.entrySet()) {
+                            variables.put(String.valueOf(entry.getKey()), String.valueOf(entry.getValue()));
                         }
+                        return null;
                     }
-                    );
-                } catch (InterruptedException e) {
-                    throw new XTriggerException(e);
                 }
+                );
             }
 
             if (propertiesContent != null) {
@@ -144,15 +166,17 @@ public class IvyTriggerEvaluator implements FilePath.FileCallable<Map<String, Iv
                 properties.load(stringReader);
                 stringReader.close();
                 for (Map.Entry<Object, Object> entry : properties.entrySet()) {
-                    ivy.setVariable(String.valueOf(entry.getKey()), String.valueOf(entry.getValue()));
+                    variables.put(String.valueOf(entry.getKey()), String.valueOf(entry.getValue()));
                 }
             }
-        } catch (ParseException pe) {
-            throw new XTriggerException(pe);
+
         } catch (IOException ioe) {
             throw new XTriggerException(ioe);
+        } catch (InterruptedException ie) {
+            throw new XTriggerException(ie);
         }
-        return ivy;
+
+        return variables;
     }
 
 
