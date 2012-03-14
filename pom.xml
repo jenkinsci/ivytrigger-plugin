@@ -31,7 +31,7 @@
 
     <properties>
         <ivy.version>2.2.0</ivy.version>
-        <xtrigger.lib.version>0.9</xtrigger.lib.version>
+        <xtrigger.lib.version>0.10</xtrigger.lib.version>
     </properties>
 
     <dependencies>
