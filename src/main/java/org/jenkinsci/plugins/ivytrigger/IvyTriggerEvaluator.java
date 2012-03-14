@@ -73,7 +73,7 @@ public class IvyTriggerEvaluator implements FilePath.FileCallable<Map<String, Iv
                 }
             }
 
-            result = getMapDependencies(ivy, resolveReport);
+            result = getMapDependencies(ivy, resolveReport, log);
 
         } catch (ParseException pe) {
             log.error("Parsing error: " + pe.getMessage());
@@ -112,6 +112,8 @@ public class IvyTriggerEvaluator implements FilePath.FileCallable<Map<String, Iv
             IvySettings ivySettings = new IvySettings();
             ivySettings.load(tempSettings);
             ivySettings.setDefaultCache(getAndInitCacheDir(launchDir));
+            //TODO A VERIFIER
+            //ivySettings.setDefaultUseOrigin(true);
 
             Ivy ivy = Ivy.newInstance(ivySettings);
             ivy.getLoggerEngine().pushLogger(new IvyTriggerResolverLog(log));
@@ -132,7 +134,8 @@ public class IvyTriggerEvaluator implements FilePath.FileCallable<Map<String, Iv
 
 
     private Map<String, String> getVariables() throws XTriggerException {
-        final Map<String, String> variables = new HashMap<String, String>();
+        //we want variables to be sorted
+        final Map<String, String> variables = new TreeMap<String, String>();
         try {
 
             //Inject variables from dependencies properties and envVars
@@ -184,35 +187,42 @@ public class IvyTriggerEvaluator implements FilePath.FileCallable<Map<String, Iv
     }
 
 
-    private Map<String, IvyDependencyValue> getMapDependencies(Ivy ivy, ResolveReport resolveReport) {
+    private Map<String, IvyDependencyValue> getMapDependencies(Ivy ivy, ResolveReport resolveReport, XTriggerLog log) {
+
         List dependencies = resolveReport.getDependencies();
+
         Map<String, IvyDependencyValue> result = new HashMap<String, IvyDependencyValue>();
         for (Object dependencyObject : dependencies) {
-            IvyNode dependencyNode = (IvyNode) dependencyObject;
-            ModuleRevisionId moduleRevisionId = dependencyNode.getResolvedId();
-            String moduleRevision = moduleRevisionId.getRevision();
-            Artifact[] artifacts = dependencyNode.getAllArtifacts();
-            List<IvyArtifactValue> ivyArtifactValues = new ArrayList<IvyArtifactValue>();
-            if (artifacts != null) {
-                for (Artifact artifact : artifacts) {
-                    IvySettings settings = ivy.getSettings();
-                    File cacheDirFile = settings.getDefaultRepositoryCacheBasedir();
-                    RepositoryCacheManager repositoryCacheManager = new DefaultRepositoryCacheManager("repo", settings, cacheDirFile);
-                    ArtifactOrigin artifactOrigin = repositoryCacheManager.getSavedArtifactOrigin(artifact);
-                    if (artifactOrigin != null && artifactOrigin.isLocal()) {
-                        String location = artifactOrigin.getLocation();
-                        File artifactFile = new File(location);
-                        if (artifactFile != null) {
-                            long lastModificationDate = artifactFile.lastModified();
-                            ivyArtifactValues.add(new IvyArtifactValue(artifact.getName(), lastModificationDate));
+            try {
+                IvyNode dependencyNode = (IvyNode) dependencyObject;
+                ModuleRevisionId moduleRevisionId = dependencyNode.getResolvedId();
+                String moduleRevision = moduleRevisionId.getRevision();
+                Artifact[] artifacts = dependencyNode.getAllArtifacts();
+                List<IvyArtifactValue> ivyArtifactValues = new ArrayList<IvyArtifactValue>();
+                if (artifacts != null) {
+                    for (Artifact artifact : artifacts) {
+                        IvySettings settings = ivy.getSettings();
+                        File cacheDirFile = settings.getDefaultRepositoryCacheBasedir();
+                        RepositoryCacheManager repositoryCacheManager = new DefaultRepositoryCacheManager("repo", settings, cacheDirFile);
+                        ArtifactOrigin artifactOrigin = repositoryCacheManager.getSavedArtifactOrigin(artifact);
+                        if (artifactOrigin != null && artifactOrigin.isLocal()) {
+                            String location = artifactOrigin.getLocation();
+                            File artifactFile = new File(location);
+                            if (artifactFile != null) {
+                                long lastModificationDate = artifactFile.lastModified();
+                                ivyArtifactValues.add(new IvyArtifactValue(artifact.getName(), lastModificationDate));
+                            }
                         }
                     }
                 }
+                result.put(dependencyNode.getId().toString(), new IvyDependencyValue(moduleRevision, ivyArtifactValues));
+            } catch (Throwable e) {
+                log.error(String.format("Can't retrieve artifacts for dependency" + (IvyNode) dependencyObject));
+                continue;
             }
-            result.put(moduleRevisionId.toString(), new IvyDependencyValue(moduleRevision, ivyArtifactValues));
         }
 
         return result;
-    }
 
+    }
 }
