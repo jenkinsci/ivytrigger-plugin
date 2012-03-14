@@ -13,16 +13,12 @@ import org.jenkinsci.lib.xtrigger.AbstractTriggerByFullContext;
 import org.jenkinsci.lib.xtrigger.XTriggerDescriptor;
 import org.jenkinsci.lib.xtrigger.XTriggerException;
 import org.jenkinsci.lib.xtrigger.XTriggerLog;
-import org.jenkinsci.plugins.ivytrigger.service.IvyTriggerEvaluator;
 import org.kohsuke.stapler.DataBoundConstructor;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 
 /**
@@ -80,8 +76,11 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
 
     @Override
     protected IvyTriggerContext getContext(Node pollingNode, XTriggerLog log) throws XTriggerException {
-        AbstractProject project = (AbstractProject) job;
 
+        log.info(String.format("Given Ivy file: %s", ivyPath));
+        log.info(String.format("Given Ivy settings file: %s", ivySettingsPath));
+
+        AbstractProject project = (AbstractProject) job;
         EnvVarsResolver varsRetriever = new EnvVarsResolver();
         Map<String, String> envVars;
         try {
@@ -90,15 +89,21 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
             throw new XTriggerException(e);
         }
 
-        //Get ivy file
+        //Get ivy file and get ivySettings file
         FilePath ivyFilePath = getDescriptorFilePath(ivyPath, project, pollingNode, log, envVars);
+        FilePath ivySettingsFilePath = getDescriptorFilePath(ivySettingsPath, project, pollingNode, log, envVars);
+
+        log.info(String.format("Resolved Ivy file: %s", ivyFilePath.getRemote()));
+        log.info(String.format("Resolved Ivy settings file: %s", ivySettingsFilePath.getRemote()));
+
         if (ivyFilePath == null) {
-            log.error(String.format("The ivy file path '%s' doesn't exist.", ivyPath));
+            log.error("You have to provide a valid Ivy file.");
             return new IvyTriggerContext(null);
         }
-
-        //Get ivysettings file
-        FilePath ivySettingsFilePath = getDescriptorFilePath(ivySettingsPath, project, pollingNode, log, envVars);
+        if (ivySettingsFilePath == null) {
+            log.error("You have to provide a valid IvySettings file.");
+            return new IvyTriggerContext(null);
+        }
 
         //Get properties info
         FilePath propertiesFilePathDescriptor = getDescriptorFilePath(propertiesFilePath, project, pollingNode, log, envVars);
@@ -149,6 +154,12 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
             throws XTriggerException {
 
         Map<String, IvyDependencyValue> previousDependencies = previousIvyTriggerContext.getDependencies();
+
+        if (previousDependencies == null) {
+            log.error("Can't compute files and check if there are modifications.");
+            return false;
+        }
+
         Map<String, IvyDependencyValue> newComputedDependencies = newIvyTriggerContext.getDependencies();
 
         //Check pre-requirements
@@ -264,8 +275,8 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
         long newPublicationDate = newIvyArtifactValue.getLastModificationDate();
         if (previousPublicationDate != newPublicationDate) {
             log.info("The dependency version has changed.");
-            log.info(String.format("The previous publication date recorded was %s.", previousPublicationDate));
-            log.info(String.format("The new computed publication date is %s.", newPublicationDate));
+            log.info(String.format("The previous publication date recorded was %s.", new Date(previousPublicationDate)));
+            log.info(String.format("The new computed publication date is %s.", new Date(newPublicationDate)));
             return true;
         }
 
