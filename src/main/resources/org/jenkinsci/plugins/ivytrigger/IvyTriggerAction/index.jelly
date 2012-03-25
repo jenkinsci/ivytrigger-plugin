@@ -30,7 +30,7 @@ THE SOFTWARE.
       <j:set var="log" value="${it.log}" />
       <j:choose>
         <j:when test="${empty(log)}">
-          ${%Polling has not run yet.}
+          ${%Waiting for a poll.}
         </j:when>
         <j:otherwise>
           <pre>

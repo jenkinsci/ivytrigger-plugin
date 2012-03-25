@@ -34,13 +34,16 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
 
     private String propertiesContent;
 
+    private boolean debug;
+
     @DataBoundConstructor
-    public IvyTrigger(String cronTabSpec, String ivyPath, String ivySettingsPath, String propertiesFilePath, String propertiesContent) throws ANTLRException {
+    public IvyTrigger(String cronTabSpec, String ivyPath, String ivySettingsPath, String propertiesFilePath, String propertiesContent, boolean debug) throws ANTLRException {
         super(cronTabSpec);
         this.ivyPath = Util.fixEmpty(ivyPath);
         this.ivySettingsPath = Util.fixEmpty(ivySettingsPath);
         this.propertiesFilePath = Util.fixEmpty(propertiesFilePath);
         this.propertiesContent = Util.fixEmpty(propertiesContent);
+        this.debug = debug;
     }
 
     @SuppressWarnings("unused")
@@ -61,6 +64,11 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
     @SuppressWarnings("unused")
     public String getPropertiesContent() {
         return propertiesContent;
+    }
+
+    @SuppressWarnings("unused")
+    public boolean isDebug() {
+        return debug;
     }
 
     @Override
@@ -131,7 +139,7 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
         if (launcherNode != null) {
             FilePath launcherFilePath = launcherNode.getRootPath();
             if (launcherFilePath != null) {
-                dependenciesMap = launcherFilePath.act(new IvyTriggerEvaluator(job.getName(), ivyFilePath, ivySettingsFilePath, propertiesFilePath, propertiesContent, log, envVars));
+                dependenciesMap = launcherFilePath.act(new IvyTriggerEvaluator(job.getName(), ivyFilePath, ivySettingsFilePath, propertiesFilePath, propertiesContent, log, debug, envVars));
             }
         }
         return dependenciesMap;

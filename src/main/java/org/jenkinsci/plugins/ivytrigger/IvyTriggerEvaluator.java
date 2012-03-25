@@ -36,6 +36,8 @@ public class IvyTriggerEvaluator implements FilePath.FileCallable<Map<String, Iv
 
     private XTriggerLog log;
 
+    private boolean debug;
+
     private Map<String, String> envVars;
 
     public IvyTriggerEvaluator(String namespace,
@@ -44,6 +46,7 @@ public class IvyTriggerEvaluator implements FilePath.FileCallable<Map<String, Iv
                                FilePath propertiesFilePath,
                                String propertiesContent,
                                XTriggerLog log,
+                               boolean debug,
                                Map<String, String> envVars) {
         this.namespace = namespace;
         this.ivyFilePath = ivyFilePath;
@@ -112,11 +115,9 @@ public class IvyTriggerEvaluator implements FilePath.FileCallable<Map<String, Iv
             IvySettings ivySettings = new IvySettings();
             ivySettings.load(tempSettings);
             ivySettings.setDefaultCache(getAndInitCacheDir(launchDir));
-            //TODO A VERIFIER
-            //ivySettings.setDefaultUseOrigin(true);
 
             Ivy ivy = Ivy.newInstance(ivySettings);
-            ivy.getLoggerEngine().pushLogger(new IvyTriggerResolverLog(log));
+            ivy.getLoggerEngine().pushLogger(new IvyTriggerResolverLog(log, debug));
             for (Map.Entry<String, String> entry : variables.entrySet()) {
                 ivy.setVariable(entry.getKey(), entry.getValue());
             }

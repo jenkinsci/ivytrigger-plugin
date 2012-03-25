@@ -1,7 +1,6 @@
 package org.jenkinsci.plugins.ivytrigger;
 
 import org.apache.ivy.util.AbstractMessageLogger;
-import org.apache.ivy.util.Message;
 import org.jenkinsci.lib.xtrigger.XTriggerLog;
 
 /**
@@ -11,8 +10,11 @@ public class IvyTriggerResolverLog extends AbstractMessageLogger {
 
     private XTriggerLog log;
 
-    public IvyTriggerResolverLog(XTriggerLog xTriggerLog) {
+    private boolean debug;
+
+    public IvyTriggerResolverLog(XTriggerLog xTriggerLog, boolean debug) {
         this.log = xTriggerLog;
+        this.debug = debug;
     }
 
     @Override
@@ -29,7 +31,7 @@ public class IvyTriggerResolverLog extends AbstractMessageLogger {
 
     public void log(String msg, int level) {
         if (msg != null && msg.length() != 0) {
-            if (level != Message.MSG_DEBUG || level != Message.MSG_VERBOSE) {
+            if (debug) {
                 log.info(msg);
             }
         }

@@ -18,6 +18,11 @@
         <f:textarea name="propertiesContent" value="${instance.propertiesContent}"/>
     </f:entry>
 
+    <f:entry field="debug"
+             title="${%Active debug mode on artifacts resolution}">
+        <f:checkbox name="debug" checked="${instance.debug}"/>
+    </f:entry>
+
     <f:entry title="${%Schedule}" help="/descriptor/hudson.triggers.TimerTrigger/help/spec">
         <f:textarea name="cronTabSpec"
                     checkUrl="'${rootURL}/trigger/TimerTrigger/check?value='+encodeURIComponent(this.value)"
