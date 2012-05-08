@@ -96,7 +96,9 @@ public class IvyTriggerEvaluator implements FilePath.FileCallable<Map<String, Iv
 
         Map<String, String> variables = getVariables();
 
+        File tempSettings = null;
         try {
+
             //------------ENV_VAR_
             StringBuffer envVarsContent = new StringBuffer();
             for (Map.Entry<String, String> entry : variables.entrySet()) {
@@ -108,7 +110,7 @@ public class IvyTriggerEvaluator implements FilePath.FileCallable<Map<String, Iv
             StringBuffer stringBuffer = new StringBuffer(settingsContent);
             int index = stringBuffer.indexOf("<ivysettings>");
             stringBuffer.insert(index + "<ivysettings>".length() + 1, envVarsContent.toString());
-            File tempSettings = File.createTempFile("file", ".tmp");
+            tempSettings = File.createTempFile("file", ".tmp");
             FileOutputStream fileOutputStream = new FileOutputStream(tempSettings);
             fileOutputStream.write(stringBuffer.toString().getBytes());
 
@@ -122,13 +124,16 @@ public class IvyTriggerEvaluator implements FilePath.FileCallable<Map<String, Iv
                 ivy.setVariable(entry.getKey(), entry.getValue());
             }
 
-            tempSettings.delete();
             return ivy;
 
         } catch (ParseException pe) {
             throw new XTriggerException(pe);
         } catch (IOException ioe) {
             throw new XTriggerException(ioe);
+        } finally {
+            if (tempSettings != null) {
+                tempSettings.delete();
+            }
         }
 
     }
