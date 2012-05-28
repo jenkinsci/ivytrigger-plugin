@@ -216,7 +216,7 @@ public class IvyTriggerEvaluator implements FilePath.FileCallable<Map<String, Iv
                             File artifactFile = new File(location);
                             if (artifactFile != null) {
                                 long lastModificationDate = artifactFile.lastModified();
-                                ivyArtifactValues.add(new IvyArtifactValue(artifact.getName(), lastModificationDate));
+                                ivyArtifactValues.add(new IvyArtifactValue(artifact.getName(), artifact.getExt(), lastModificationDate));
                             }
                         }
                     }

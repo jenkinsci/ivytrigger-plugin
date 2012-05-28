@@ -239,7 +239,7 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
 
         //Display all resolved artifacts
         for (IvyArtifactValue artifactValue : newArtifactValueList) {
-            log.info(String.format("..Dependency resolved artifact: %s", artifactValue.getName()));
+            log.info(String.format("..Dependency resolved artifact: %s", artifactValue.getFullName()));
         }
 
         if (previousArtifactValueList.size() != newArtifactValueList.size()) {
@@ -259,7 +259,7 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
 
     private boolean isArtifactsChanged(XTriggerLog log, IvyArtifactValue previousIvyArtifactValue, List<IvyArtifactValue> newArtifactValueList) {
 
-        log.info(String.format("....Checking previous recording artifact %s", previousIvyArtifactValue.getName()));
+        log.info(String.format("....Checking previous recording artifact %s", previousIvyArtifactValue.getFullName()));
 
         //Get the new artifact with same coordinates
         IvyArtifactValue newIvyArtifactValue = null;
@@ -267,7 +267,7 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
         int i = 0;
         while (!stop && i < newArtifactValueList.size()) {
             IvyArtifactValue ivyArtifactValue = newArtifactValueList.get(i);
-            if (ivyArtifactValue.getName().equals(previousIvyArtifactValue.getName())) {
+            if (ivyArtifactValue.getFullName().equals(previousIvyArtifactValue.getFullName())) {
                 newIvyArtifactValue = ivyArtifactValue;
                 stop = true;
             }
@@ -278,7 +278,7 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
 
         //Check if the artifact still exist
         if (newIvyArtifactValue == null) {
-            log.info(String.format("....The previous artifact %s doesn't exist anymore.", previousIvyArtifactValue.getName()));
+            log.info(String.format("....The previous artifact %s doesn't exist anymore.", previousIvyArtifactValue.getFullName()));
             return true;
         }
 
@@ -292,7 +292,7 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
             return true;
         }
 
-        log.info(String.format("....No changes for the %s artifact", newIvyArtifactValue.getName()));
+        log.info(String.format("....No changes for the %s artifact", newIvyArtifactValue.getFullName()));
         return false;
     }
 

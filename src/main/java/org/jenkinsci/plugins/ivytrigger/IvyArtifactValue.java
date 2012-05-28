@@ -9,15 +9,29 @@ public class IvyArtifactValue implements Serializable {
 
     private String name;
 
+    private String extension;
+
     private long lastModificationDate;
 
-    public IvyArtifactValue(String name, long lastModificationDate) {
+    public IvyArtifactValue(String name, String extension, long lastModificationDate) {
         this.name = name;
+        this.extension = extension;
         this.lastModificationDate = lastModificationDate;
+    }
+
+    public String getFullName() {
+        if (extension != null) {
+            return String.format("%s.%s", name, extension);
+        }
+        return getName();
     }
 
     public String getName() {
         return name;
+    }
+
+    public String getExtension() {
+        return extension;
     }
 
     public long getLastModificationDate() {
