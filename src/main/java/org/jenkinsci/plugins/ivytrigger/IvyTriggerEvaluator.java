@@ -54,6 +54,7 @@ public class IvyTriggerEvaluator implements FilePath.FileCallable<Map<String, Iv
         this.propertiesFilePath = propertiesFilePath;
         this.propertiesContent = propertiesContent;
         this.log = log;
+        this.debug = debug;
         this.envVars = envVars;
     }
 
