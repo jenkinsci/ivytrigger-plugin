@@ -7,6 +7,10 @@ import hudson.Util;
 import hudson.model.AbstractProject;
 import hudson.model.Action;
 import hudson.model.Node;
+
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.StringUtils;
 import org.jenkinsci.lib.envinject.EnvInjectException;
 import org.jenkinsci.lib.envinject.service.EnvVarsResolver;
 import org.jenkinsci.lib.xtrigger.AbstractTriggerByFullContext;
@@ -100,10 +104,7 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
         //Get ivy file and get ivySettings file
         FilePath ivyFilePath = getDescriptorFilePath(ivyPath, project, pollingNode, log, envVars);
         FilePath ivySettingsFilePath = getDescriptorFilePath(ivySettingsPath, project, pollingNode, log, envVars);
-
-        log.info(String.format("Resolved job Ivy file value: %s", ivyFilePath.getRemote()));
-        log.info(String.format("Resolved job Ivy settings file value: %s", ivySettingsFilePath.getRemote()));
-
+        
         if (ivyFilePath == null) {
             log.error("You have to provide a valid Ivy file.");
             return new IvyTriggerContext(null);
@@ -113,13 +114,18 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
             return new IvyTriggerContext(null);
         }
 
-        //Get properties info
-        FilePath propertiesFilePathDescriptor = getDescriptorFilePath(propertiesFilePath, project, pollingNode, log, envVars);
+        log.info(String.format("Resolved job Ivy file value: %s", ivyFilePath.getRemote()));
+        log.info(String.format("Resolved job Ivy settings file value: %s", ivySettingsFilePath.getRemote()));
+        
+        String propertiesFileContent = extractPropertiesFileContents(propertiesFilePath, project, pollingNode, log, envVars);
         String propertiesContentResolved = Util.replaceMacro(propertiesContent, envVars);
 
         Map<String, IvyDependencyValue> dependencies;
-        try {
-            dependencies = getDependenciesMapForNode(pollingNode, log, ivyFilePath, ivySettingsFilePath, propertiesFilePathDescriptor, propertiesContentResolved, envVars);
+    	try {
+    		FilePath temporaryPropertiesFile = pollingNode.getRootPath().createTextTempFile("props", "props", propertiesFileContent);
+        	log.info("Temporary properties file path is " + temporaryPropertiesFile.getName());
+            dependencies = getDependenciesMapForNode(pollingNode, log, ivyFilePath, ivySettingsFilePath, temporaryPropertiesFile, propertiesContentResolved, envVars);
+            temporaryPropertiesFile.delete();
         } catch (IOException ioe) {
             throw new XTriggerException(ioe);
         } catch (InterruptedException ie) {
@@ -295,6 +301,28 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
         log.info(String.format("....No changes for the %s artifact", newIvyArtifactValue.getFullName()));
         return false;
     }
+    
+    private String extractPropertiesFileContents(String propertiesFilePath, AbstractProject job, Node pollingNode, XTriggerLog log, Map<String, String> envVars) throws XTriggerException {
+    	String fileContent = "";
+    	
+    	if (StringUtils.isEmpty(propertiesFilePath)) {
+    		return fileContent;
+    	}
+    	
+        String[] files = StringUtils.split(propertiesFilePath, ";");
+    	try {
+    	    for (String path : files) {
+    	    	String trimmedPath = StringUtils.trim(path);
+    	    	log.info("Found properties file " + trimmedPath);
+    	    	FilePath fp = getDescriptorFilePath(trimmedPath, job, pollingNode, log, envVars);
+    	    	fileContent += IOUtils.toString(fp.read()) + "\n";
+	        }
+    	} catch (IOException ioe) {
+    		throw new XTriggerException(ioe);
+    	}
+    
+        return fileContent;
+	}
 
     private FilePath getDescriptorFilePath(String filePath,
                                            AbstractProject job,
