@@ -1,59 +1,105 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
-    <modelVersion>4.0.0</modelVersion>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+	<modelVersion>4.0.0</modelVersion>
 
-    <parent>
-        <groupId>org.jenkins-ci.plugins</groupId>
-        <artifactId>plugin</artifactId>
-        <version>1.410</version>
-    </parent>
+	<parent>
+		<groupId>org.jenkins-ci.plugins</groupId>
+		<artifactId>plugin</artifactId>
+		<version>1.410</version>
+	</parent>
 
-    <artifactId>ivytrigger</artifactId>
-    <packaging>hpi</packaging>
-    <name>Jenkins IvyTrigger Plug-in</name>
-    <version>0.24-SNAPSHOT</version>
-    <url>http://wiki.jenkins-ci.org/display/JENKINS/IvyTrigger+Plugin</url>
+	<artifactId>ivytrigger</artifactId>
+	<packaging>hpi</packaging>
+	<name>Jenkins IvyTrigger Plug-in</name>
+	<version>0.24-SNAPSHOT</version>
+	<url>http://wiki.jenkins-ci.org/display/JENKINS/IvyTrigger+Plugin</url>
 
-    <licenses>
-        <license>
-            <name>MIT license</name>
-            <comments>All source code is under the MIT license.</comments>
-        </license>
-    </licenses>
+	<licenses>
+		<license>
+			<name>MIT license</name>
+			<comments>All source code is under the MIT license.</comments>
+		</license>
+	</licenses>
 
-    <developers>
-        <developer>
-            <id>gbois</id>
-            <name>Gregory Boissinot</name>
-            <email>gregory.boissinot@gmail.com</email>
-            <timezone>+1</timezone>
-        </developer>
-    </developers>
+	<developers>
+		<developer>
+			<id>gbois</id>
+			<name>Gregory Boissinot</name>
+			<email>gregory.boissinot@gmail.com</email>
+			<timezone>+1</timezone>
+		</developer>
+	</developers>
 
-    <properties>
-        <ivy.version>2.2.0</ivy.version>
-        <xtrigger.lib.version>0.18</xtrigger.lib.version>
-    </properties>
+	<properties>
+		<ivy.version>2.2.0</ivy.version>
+		<xtrigger.lib.version>0.18</xtrigger.lib.version>
+	</properties>
 
-    <dependencies>
+	<dependencies>
+		<dependency>
+			<groupId>org.mockito</groupId>
+			<artifactId>mockito-all</artifactId>
+			<version>1.9.0</version>
+			<scope>test</scope>
+		</dependency>
+		
+		<dependency>
+			<groupId>org.powermock</groupId>
+			<artifactId>powermock-module-junit4</artifactId>
+			<version>1.4.12</version>
+			<scope>test</scope>
+		</dependency>
+		
+		<dependency>
+			<groupId>org.powermock</groupId>
+			<artifactId>powermock-api-mockito</artifactId>
+			<version>1.4.12</version>
+			<scope>test</scope>
+		</dependency>
 
-        <dependency>
-            <groupId>org.apache.ivy</groupId>
-            <artifactId>ivy</artifactId>
-            <version>${ivy.version}</version>
-        </dependency>
+		<dependency>
+			<groupId>org.apache.ivy</groupId>
+			<artifactId>ivy</artifactId>
+			<version>${ivy.version}</version>
+		</dependency>
 
-        <dependency>
-            <groupId>org.jenkins-ci.lib</groupId>
-            <artifactId>xtrigger-lib</artifactId>
-            <version>${xtrigger.lib.version}</version>
-        </dependency>
+		<dependency>
+			<groupId>org.jenkins-ci.lib</groupId>
+			<artifactId>xtrigger-lib</artifactId>
+			<version>${xtrigger.lib.version}</version>
+		</dependency>
+	</dependencies>
 
-    </dependencies>
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<argLine>-Xms256m -Xmx512m</argLine>
+					<redirectTestOutputToFile>true</redirectTestOutputToFile>
+					<testFailureIgnore>true</testFailureIgnore>
+				</configuration>
+				<executions>
+					<execution>
+						<id>test</id>
+						<phase>test</phase>
+						<goals>
+							<goal>test</goal>
+						</goals>
+						<configuration>
+							<junitArtifactName>none:none</junitArtifactName>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
 
-    <scm>
-        <connection>scm:git:git://github.com/jenkinsci/ivytrigger-plugin.git</connection>
-        <developerConnection>scm:git:git://github.com/jenkinsci/ivytrigger-plugin.git</developerConnection>
-    </scm>
+	<scm>
+		<connection>scm:git:git://github.com/jenkinsci/ivytrigger-plugin.git</connection>
+		<developerConnection>scm:git:git://github.com/jenkinsci/ivytrigger-plugin.git</developerConnection>
+	</scm>
 
 </project>
 
