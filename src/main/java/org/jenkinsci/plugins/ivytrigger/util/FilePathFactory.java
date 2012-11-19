@@ -4,22 +4,21 @@ import hudson.FilePath;
 import hudson.Util;
 import hudson.model.AbstractProject;
 import hudson.model.Node;
+import org.jenkinsci.lib.xtrigger.XTriggerException;
+import org.jenkinsci.lib.xtrigger.XTriggerLog;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.Map;
 
-import org.jenkinsci.lib.xtrigger.XTriggerException;
-import org.jenkinsci.lib.xtrigger.XTriggerLog;
-
 public class FilePathFactory {
 
 
     public FilePath getDescriptorFilePath(String filePath,
-                                           AbstractProject job,
-                                           Node pollingNode,
-                                           XTriggerLog log,
-                                           Map<String, String> envVars)
+                                          AbstractProject job,
+                                          Node pollingNode,
+                                          XTriggerLog log,
+                                          Map<String, String> envVars)
             throws XTriggerException {
         try {
 
@@ -69,5 +68,5 @@ public class FilePathFactory {
             throw new XTriggerException(ie);
         }
     }
-	
+
 }
