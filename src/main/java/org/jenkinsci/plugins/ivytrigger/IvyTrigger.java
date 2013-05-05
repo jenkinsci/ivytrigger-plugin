@@ -38,21 +38,22 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
 
     private boolean debug;
 
-    private FilePathFactory filePathFactory;
+    private boolean labelRestriction;
 
-    private PropertiesFileContentExtractor propertiesFileContentExtractor;
+    private boolean enableConcurrentBuild;
+
+    private transient PropertiesFileContentExtractor propertiesFileContentExtractor;
 
     @DataBoundConstructor
-    public IvyTrigger(String cronTabSpec, String ivyPath, String ivySettingsPath, String propertiesFilePath, String propertiesContent, boolean debug) throws ANTLRException {
-        super(cronTabSpec);
+    public IvyTrigger(String cronTabSpec, String ivyPath, String ivySettingsPath, String propertiesFilePath, String propertiesContent, LabelRestrictionClass labelRestriction, boolean enableConcurrentBuild, boolean debug) throws ANTLRException {
+        super(cronTabSpec, (labelRestriction == null) ? null : labelRestriction.getTriggerLabel(), enableConcurrentBuild);
         this.ivyPath = Util.fixEmpty(ivyPath);
         this.ivySettingsPath = Util.fixEmpty(ivySettingsPath);
         this.propertiesFilePath = Util.fixEmpty(propertiesFilePath);
         this.propertiesContent = Util.fixEmpty(propertiesContent);
         this.debug = debug;
-
-        this.filePathFactory = new FilePathFactory();
-        this.propertiesFileContentExtractor = new PropertiesFileContentExtractor(this.filePathFactory);
+        this.labelRestriction = (labelRestriction == null) ? false : true;
+        this.enableConcurrentBuild = enableConcurrentBuild;
     }
 
     @SuppressWarnings("unused")
@@ -78,6 +79,14 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
     @SuppressWarnings("unused")
     public boolean isDebug() {
         return debug;
+    }
+
+    public boolean isLabelRestriction() {
+        return labelRestriction;
+    }
+
+    public boolean isEnableConcurrentBuild() {
+        return enableConcurrentBuild;
     }
 
     @Override
@@ -107,6 +116,7 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
         }
 
         //Get ivy file and get ivySettings file
+        FilePathFactory filePathFactory = new FilePathFactory();
         FilePath ivyFilePath = filePathFactory.getDescriptorFilePath(ivyPath, project, pollingNode, log, envVars);
         FilePath ivySettingsFilePath = filePathFactory.getDescriptorFilePath(ivySettingsPath, project, pollingNode, log, envVars);
 
@@ -122,6 +132,7 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
         log.info(String.format("Resolved job Ivy file value: %s", ivyFilePath.getRemote()));
         log.info(String.format("Resolved job Ivy settings file value: %s", ivySettingsFilePath.getRemote()));
 
+        PropertiesFileContentExtractor propertiesFileContentExtractor = new PropertiesFileContentExtractor(new FilePathFactory());
         String propertiesFileContent = propertiesFileContentExtractor.extractPropertiesFileContents(propertiesFilePath, project, pollingNode, log, envVars);
         String propertiesContentResolved = Util.replaceMacro(propertiesContent, envVars);
 

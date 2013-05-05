@@ -17,6 +17,7 @@ import java.util.Map;
  * @author Mike McLean
  */
 public class PropertiesFileContentExtractor {
+
     private FilePathFactory filePathFactory;
 
     public PropertiesFileContentExtractor(FilePathFactory filePathFactory) {
@@ -42,6 +43,7 @@ public class PropertiesFileContentExtractor {
      * @throws XTriggerException
      */
     public String extractPropertiesFileContents(String propertiesFilePath, AbstractProject job, Node pollingNode, XTriggerLog log, Map<String, String> envVars) throws XTriggerException {
+
         log.info("Given job  properties file path: " + propertiesFilePath);
 
         String fileContent = "";
@@ -53,7 +55,7 @@ public class PropertiesFileContentExtractor {
         List<String> filePaths = splitFilePaths(propertiesFilePath);
         try {
             for (String path : filePaths) {
-                FilePath fp = this.filePathFactory.getDescriptorFilePath(path, job, pollingNode, log, envVars);
+                FilePath fp = filePathFactory.getDescriptorFilePath(path, job, pollingNode, log, envVars);
                 log.info("Resolved properties file value : " + fp.getRemote());
                 fileContent += IOUtils.toString(fp.read()) + "\n";
             }
