@@ -42,7 +42,7 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
 
     private boolean enableConcurrentBuild;
 
-    private transient PropertiesFileContentExtractor propertiesFileContentExtractor;
+    private PropertiesFileContentExtractor propertiesFileContentExtractor;
 
     @DataBoundConstructor
     public IvyTrigger(String cronTabSpec, String ivyPath, String ivySettingsPath, String propertiesFilePath, String propertiesContent, LabelRestrictionClass labelRestriction, boolean enableConcurrentBuild, boolean debug) throws ANTLRException {
