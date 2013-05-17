@@ -42,7 +42,9 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
 
     private boolean enableConcurrentBuild;
 
-    private PropertiesFileContentExtractor propertiesFileContentExtractor;
+    private transient FilePathFactory filePathFactory;
+
+    private transient PropertiesFileContentExtractor propertiesFileContentExtractor;
 
     @DataBoundConstructor
     public IvyTrigger(String cronTabSpec, String ivyPath, String ivySettingsPath, String propertiesFilePath, String propertiesContent, LabelRestrictionClass labelRestriction, boolean enableConcurrentBuild, boolean debug) throws ANTLRException {
@@ -352,6 +354,5 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
             return "[IvyTrigger] - Poll with an Ivy script";
         }
     }
-
 
 }
