@@ -4,9 +4,11 @@ import antlr.ANTLRException;
 import hudson.Extension;
 import hudson.FilePath;
 import hudson.Util;
+import hudson.console.AnnotatedLargeText;
 import hudson.model.AbstractProject;
 import hudson.model.Action;
 import hudson.model.Node;
+import org.apache.commons.jelly.XMLOutput;
 import org.jenkinsci.lib.envinject.EnvInjectException;
 import org.jenkinsci.lib.envinject.service.EnvVarsResolver;
 import org.jenkinsci.lib.xtrigger.AbstractTriggerByFullContext;
@@ -20,6 +22,7 @@ import org.kohsuke.stapler.DataBoundConstructor;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
+import java.nio.charset.Charset;
 import java.util.*;
 
 
@@ -93,9 +96,55 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
 
     @Override
     public Collection<? extends Action> getProjectActions() {
-        IvyTriggerAction action = new IvyTriggerAction((AbstractProject) job, getLogFile(), this.getDescriptor().getDisplayName());
+        IvyTriggerAction action = new InternalIvyTriggerAction(this.getDescriptor().getDisplayName());
         return Collections.singleton(action);
     }
+
+
+    public final class InternalIvyTriggerAction extends IvyTriggerAction {
+
+        private transient String label;
+
+        public InternalIvyTriggerAction(String label) {
+            this.label = label;
+        }
+
+        @SuppressWarnings("unused")
+        public AbstractProject<?, ?> getOwner() {
+            return (AbstractProject) job;
+        }
+
+        @Override
+        public String getIconFileName() {
+            return "clipboard.gif";
+        }
+
+        @Override
+        public String getDisplayName() {
+            return "IvyTrigger Log";
+        }
+
+        @Override
+        public String getUrlName() {
+            return "ivyTriggerPollLog";
+        }
+
+        @SuppressWarnings("unused")
+        public String getLabel() {
+            return label;
+        }
+
+        @SuppressWarnings("unused")
+        public String getLog() throws IOException {
+            return Util.loadFile(getLogFile());
+        }
+
+        @SuppressWarnings("unused")
+        public void writeLogTo(XMLOutput out) throws IOException {
+            new AnnotatedLargeText<InternalIvyTriggerAction>(getLogFile(), Charset.defaultCharset(), true, this).writeHtmlTo(0, out.asWriter());
+        }
+    }
+
 
     @Override
     public boolean isContextOnStartupFetched() {
@@ -189,6 +238,7 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
 
         if (previousDependencies == null) {
             log.error("Can't compute files to check if there are modifications.");
+            resetOldContext(previousIvyTriggerContext);
             return false;
         }
 
@@ -197,11 +247,13 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
         //Check pre-requirements
         if (newComputedDependencies == null) {
             log.error("Can't record the resolved dependencies graph.");
+            resetOldContext(previousIvyTriggerContext);
             return false;
         }
 
         if (newComputedDependencies.size() == 0) {
             log.error("Can't record any dependencies. Check your settings.");
+            resetOldContext(previousIvyTriggerContext);
             return false;
         }
 
@@ -212,11 +264,13 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
 
         if (previousDependencies == null) {
             log.info("\nRecording dependencies state. Waiting for next schedule to compare changes between polls.");
+            setNewContext(newIvyTriggerContext);
             return false;
         }
 
         if (previousDependencies.size() != newComputedDependencies.size()) {
             log.info(String.format("\nThe number of resolved dependencies has changed."));
+            setNewContext(newIvyTriggerContext);
             return true;
         }
 
@@ -224,10 +278,12 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
         log.info("\nChecking comparison to previous recorded dependencies.");
         for (Map.Entry<String, IvyDependencyValue> dependency : previousDependencies.entrySet()) {
             if (isDependencyChanged(log, dependency, newComputedDependencies)) {
+                setNewContext(newIvyTriggerContext);
                 return true;
             }
         }
 
+        setNewContext(newIvyTriggerContext);
         return false;
     }
 
