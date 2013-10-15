@@ -33,7 +33,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>1.6</maven.compiler.source>
         <maven.compiler.target>1.6</maven.compiler.target>
-        <ivy.version>2.2.0</ivy.version>
+        <ivy.version>2.3.0</ivy.version>
         <xtrigger.lib.version>0.31</xtrigger.lib.version>
         <mockito.version>1.9.0</mockito.version>
         <powermock.version>1.4.12</powermock.version>
