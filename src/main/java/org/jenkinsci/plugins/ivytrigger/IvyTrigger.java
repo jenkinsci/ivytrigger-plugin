@@ -8,6 +8,7 @@ import hudson.console.AnnotatedLargeText;
 import hudson.model.AbstractProject;
 import hudson.model.Action;
 import hudson.model.Node;
+
 import org.apache.commons.jelly.XMLOutput;
 import org.jenkinsci.lib.envinject.EnvInjectException;
 import org.jenkinsci.lib.envinject.service.EnvVarsResolver;
@@ -22,6 +23,8 @@ import org.kohsuke.stapler.DataBoundConstructor;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.nio.charset.Charset;
 import java.util.*;
 
@@ -169,19 +172,24 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
         //Get ivy file and get ivySettings file
         FilePathFactory filePathFactory = new FilePathFactory();
         FilePath ivyFilePath = filePathFactory.getDescriptorFilePath(ivyPath, project, pollingNode, log, envVars);
-        FilePath ivySettingsFilePath = filePathFactory.getDescriptorFilePath(ivySettingsPath, project, pollingNode, log, envVars);
+        final URL ivySettingsUrl = getRemoteURL(ivySettingsPath, log);
+        FilePath ivySettingsFilePath = ivySettingsUrl != null ? null : filePathFactory
+                .getDescriptorFilePath(ivySettingsPath, project, pollingNode, log, envVars);
 
         if (ivyFilePath == null) {
             log.error("You have to provide a valid Ivy file.");
             return new IvyTriggerContext(null);
         }
-        if (ivySettingsFilePath == null) {
-            log.error("You have to provide a valid IvySettings file.");
+        if (ivySettingsFilePath == null && ivySettingsUrl == null) {
+            log.error("You have to provide a valid IvySettings file or URL.");
             return new IvyTriggerContext(null);
         }
 
         log.info(String.format("Resolved job Ivy file value: %s", ivyFilePath.getRemote()));
-        log.info(String.format("Resolved job Ivy settings file value: %s", ivySettingsFilePath.getRemote()));
+        log.info(String.format(
+                "Resolved job Ivy settings file value: %s",
+                ivySettingsUrl == null ? ivySettingsFilePath.getRemote() : ivySettingsUrl
+                        .toString()));
 
         PropertiesFileContentExtractor propertiesFileContentExtractor = new PropertiesFileContentExtractor(new FilePathFactory());
         String propertiesFileContent = propertiesFileContentExtractor.extractPropertiesFileContents(propertiesFilePath, project, pollingNode, log, envVars);
@@ -191,7 +199,7 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
         try {
             FilePath temporaryPropertiesFilePath = pollingNode.getRootPath().createTextTempFile("props", "props", propertiesFileContent);
             log.info("Temporary properties file path is " + temporaryPropertiesFilePath.getName());
-            dependencies = getDependenciesMapForNode(pollingNode, log, ivyFilePath, ivySettingsFilePath, temporaryPropertiesFilePath, propertiesContentResolved, envVars);
+            dependencies = getDependenciesMapForNode(pollingNode, log, ivyFilePath, ivySettingsFilePath, ivySettingsUrl, temporaryPropertiesFilePath, propertiesContentResolved, envVars);
             temporaryPropertiesFilePath.delete();
         } catch (IOException ioe) {
             throw new XTriggerException(ioe);
@@ -205,6 +213,7 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
                                                                       XTriggerLog log,
                                                                       FilePath ivyFilePath,
                                                                       FilePath ivySettingsFilePath,
+                                                                      URL ivySettingsURL,
                                                                       FilePath propertiesFilePath,
                                                                       String propertiesContent,
                                                                       Map<String, String> envVars) throws IOException, InterruptedException, XTriggerException {
@@ -212,10 +221,34 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
         if (launcherNode != null) {
             FilePath launcherFilePath = launcherNode.getRootPath();
             if (launcherFilePath != null) {
-                dependenciesMap = launcherFilePath.act(new IvyTriggerEvaluator(job.getName(), ivyFilePath, ivySettingsFilePath, propertiesFilePath, propertiesContent, log, debug, envVars));
+                dependenciesMap = launcherFilePath.act(new IvyTriggerEvaluator(job.getName(), ivyFilePath, ivySettingsFilePath, ivySettingsURL, propertiesFilePath, propertiesContent, log, debug, envVars));
             }
         }
         return dependenciesMap;
+    }
+
+    /**
+     * Method tests, whether the string specifies the local file or an URL. In
+     * the second case, URL is returned.
+     * @param filename filename to test
+     * @param log log for he logging
+     * @return URL, if the specified filename is an URL, <code>null</code>
+     *         otherwise
+     */
+    private static URL getRemoteURL(String filename, XTriggerLog log) {
+        URL settingsUrl;
+        try {
+            settingsUrl = new URL(filename);
+        } catch (MalformedURLException e) {
+            log.info("URL is not well-fotmatted. Assuming it is a local file: " + filename);
+            return null;
+        }
+        final String scheme = settingsUrl.getProtocol();
+        if (scheme == null) {
+            return null;
+        } else {
+            return settingsUrl;
+        }
     }
 
     @Override

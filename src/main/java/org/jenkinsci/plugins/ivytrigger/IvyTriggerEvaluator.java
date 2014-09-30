@@ -2,7 +2,9 @@ package org.jenkinsci.plugins.ivytrigger;
 
 import hudson.FilePath;
 import hudson.remoting.VirtualChannel;
+
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.ivy.Ivy;
 import org.apache.ivy.core.cache.ArtifactOrigin;
 import org.apache.ivy.core.cache.DefaultRepositoryCacheManager;
@@ -16,6 +18,7 @@ import org.jenkinsci.lib.xtrigger.XTriggerException;
 import org.jenkinsci.lib.xtrigger.XTriggerLog;
 
 import java.io.*;
+import java.net.URL;
 import java.text.ParseException;
 import java.util.*;
 
@@ -30,6 +33,8 @@ public class IvyTriggerEvaluator implements FilePath.FileCallable<Map<String, Iv
 
     private FilePath ivySettingsFilePath;
 
+    private final URL ivySettingsURL;
+
     private FilePath propertiesFilePath;
 
     private String propertiesContent;
@@ -43,6 +48,7 @@ public class IvyTriggerEvaluator implements FilePath.FileCallable<Map<String, Iv
     public IvyTriggerEvaluator(String namespace,
                                FilePath ivyFilePath,
                                FilePath ivySettingsFilePath,
+                               URL ivySettingsURL,
                                FilePath propertiesFilePath,
                                String propertiesContent,
                                XTriggerLog log,
@@ -51,6 +57,7 @@ public class IvyTriggerEvaluator implements FilePath.FileCallable<Map<String, Iv
         this.namespace = namespace;
         this.ivyFilePath = ivyFilePath;
         this.ivySettingsFilePath = ivySettingsFilePath;
+        this.ivySettingsURL = ivySettingsURL;
         this.propertiesFilePath = propertiesFilePath;
         this.propertiesContent = propertiesContent;
         this.log = log;
@@ -107,7 +114,7 @@ public class IvyTriggerEvaluator implements FilePath.FileCallable<Map<String, Iv
             }
 
             //-----------Inject properties files
-            String settingsContent = FileUtils.readFileToString(new File(ivySettingsFilePath.getRemote()));
+            String settingsContent = getIvySettingsContents();
             StringBuffer stringBuffer = new StringBuffer(settingsContent);
             int index = stringBuffer.indexOf("<ivysettings>");
             stringBuffer.insert(index + "<ivysettings>".length() + 1, envVarsContent.toString());
@@ -139,6 +146,28 @@ public class IvyTriggerEvaluator implements FilePath.FileCallable<Map<String, Iv
 
     }
 
+    /**
+     * Method retrieves Ivy Settings contents from URL or from file on
+     * master/slave
+     * @throws IOException on some IO exception occurs
+     */
+    private String getIvySettingsContents() throws IOException {
+        if (ivySettingsFilePath != null) {
+            log.info("Getting settings from file " + ivySettingsFilePath.getRemote());
+            return FileUtils.readFileToString(new File(ivySettingsFilePath.getRemote()));
+        } else {
+            log.info("Getting settings from URL " + ivySettingsURL.toString());
+            InputStream is = null;
+            try {
+                log.info("Getting settings from URL");
+                is = ivySettingsURL.openStream();
+                final String result = IOUtils.toString(is);
+                return result;
+            } finally {
+                is.close();
+            }
+        }
+    }
 
     private Map<String, String> getVariables() throws XTriggerException {
         //we want variables to be sorted
