@@ -13,6 +13,7 @@ import org.apache.ivy.core.module.descriptor.Artifact;
 import org.apache.ivy.core.module.id.ModuleRevisionId;
 import org.apache.ivy.core.report.ResolveReport;
 import org.apache.ivy.core.resolve.IvyNode;
+import org.apache.ivy.core.resolve.ResolveOptions;
 import org.apache.ivy.core.settings.IvySettings;
 import org.jenkinsci.lib.xtrigger.XTriggerException;
 import org.jenkinsci.lib.xtrigger.XTriggerLog;
@@ -43,6 +44,8 @@ public class IvyTriggerEvaluator implements FilePath.FileCallable<Map<String, Iv
 
     private boolean debug;
 
+    private final boolean downloadArtifacts;
+
     private Map<String, String> envVars;
 
     public IvyTriggerEvaluator(String namespace,
@@ -53,6 +56,7 @@ public class IvyTriggerEvaluator implements FilePath.FileCallable<Map<String, Iv
                                String propertiesContent,
                                XTriggerLog log,
                                boolean debug,
+                               boolean downloadArtifacts,
                                Map<String, String> envVars) {
         this.namespace = namespace;
         this.ivyFilePath = ivyFilePath;
@@ -62,6 +66,7 @@ public class IvyTriggerEvaluator implements FilePath.FileCallable<Map<String, Iv
         this.propertiesContent = propertiesContent;
         this.log = log;
         this.debug = debug;
+        this.downloadArtifacts = downloadArtifacts;
         this.envVars = envVars;
     }
 
@@ -70,7 +75,14 @@ public class IvyTriggerEvaluator implements FilePath.FileCallable<Map<String, Iv
         try {
             Ivy ivy = getIvyObject(launchDir, log);
             log.info("\nResolving Ivy dependencies.");
-            ResolveReport resolveReport = ivy.resolve(new File(ivyFilePath.getRemote()));
+
+            ResolveOptions options = new ResolveOptions();
+            options.setDownload(downloadArtifacts);
+
+            // Need to be able to pass a URL to resolve() so that we can also pass in some options
+            final URL ivyFileURL = new File(ivyFilePath.getRemote()).toURI().toURL();
+
+            ResolveReport resolveReport = ivy.resolve(ivyFileURL, options);
             if (resolveReport.hasError()) {
                 List problems = resolveReport.getAllProblemMessages();
                 if (problems != null && !problems.isEmpty()) {
@@ -233,20 +245,25 @@ public class IvyTriggerEvaluator implements FilePath.FileCallable<Map<String, Iv
                 IvyNode dependencyNode = (IvyNode) dependencyObject;
                 ModuleRevisionId moduleRevisionId = dependencyNode.getResolvedId();
                 String moduleRevision = moduleRevisionId.getRevision();
-                Artifact[] artifacts = dependencyNode.getAllArtifacts();
+
                 List<IvyArtifactValue> ivyArtifactValues = new ArrayList<IvyArtifactValue>();
-                if (artifacts != null) {
-                    for (Artifact artifact : artifacts) {
-                        IvySettings settings = ivy.getSettings();
-                        File cacheDirFile = settings.getDefaultRepositoryCacheBasedir();
-                        RepositoryCacheManager repositoryCacheManager = new DefaultRepositoryCacheManager("repo", settings, cacheDirFile);
-                        ArtifactOrigin artifactOrigin = repositoryCacheManager.getSavedArtifactOrigin(artifact);
-                        if (artifactOrigin != null && artifactOrigin.isLocal()) {
-                            String location = artifactOrigin.getLocation();
-                            File artifactFile = new File(location);
-                            if (artifactFile != null) {
-                                long lastModificationDate = artifactFile.lastModified();
-                                ivyArtifactValues.add(new IvyArtifactValue(artifact.getName(), artifact.getExt(), lastModificationDate));
+
+                if ( dependencyNode.isDownloaded() ) {
+                    Artifact[] artifacts = dependencyNode.getAllArtifacts();
+
+                    if (artifacts != null) {
+                        for (Artifact artifact : artifacts) {
+                            IvySettings settings = ivy.getSettings();
+                            File cacheDirFile = settings.getDefaultRepositoryCacheBasedir();
+                            RepositoryCacheManager repositoryCacheManager = new DefaultRepositoryCacheManager("repo", settings, cacheDirFile);
+                            ArtifactOrigin artifactOrigin = repositoryCacheManager.getSavedArtifactOrigin(artifact);
+                            if (artifactOrigin != null && artifactOrigin.isLocal()) {
+                                String location = artifactOrigin.getLocation();
+                                File artifactFile = new File(location);
+                                if (artifactFile != null) {
+                                    long lastModificationDate = artifactFile.lastModified();
+                                    ivyArtifactValues.add(new IvyArtifactValue(artifact.getName(), artifact.getExt(), lastModificationDate));
+                                }
                             }
                         }
                     }

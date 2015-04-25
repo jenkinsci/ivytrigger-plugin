@@ -48,18 +48,21 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
 
     private boolean enableConcurrentBuild;
 
+    private boolean downloadArtifacts;
+
     private transient FilePathFactory filePathFactory;
 
     private transient PropertiesFileContentExtractor propertiesFileContentExtractor;
 
     @DataBoundConstructor
-    public IvyTrigger(String cronTabSpec, String ivyPath, String ivySettingsPath, String propertiesFilePath, String propertiesContent, LabelRestrictionClass labelRestriction, boolean enableConcurrentBuild, boolean debug) throws ANTLRException {
+    public IvyTrigger(String cronTabSpec, String ivyPath, String ivySettingsPath, String propertiesFilePath, String propertiesContent, LabelRestrictionClass labelRestriction, boolean enableConcurrentBuild, boolean debug, boolean downloadArtifacts) throws ANTLRException {
         super(cronTabSpec, (labelRestriction == null) ? null : labelRestriction.getTriggerLabel(), enableConcurrentBuild);
         this.ivyPath = Util.fixEmpty(ivyPath);
         this.ivySettingsPath = Util.fixEmpty(ivySettingsPath);
         this.propertiesFilePath = Util.fixEmpty(propertiesFilePath);
         this.propertiesContent = Util.fixEmpty(propertiesContent);
         this.debug = debug;
+        this.downloadArtifacts = downloadArtifacts;
         this.labelRestriction = (labelRestriction == null) ? false : true;
         this.enableConcurrentBuild = enableConcurrentBuild;
     }
@@ -87,6 +90,11 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
     @SuppressWarnings("unused")
     public boolean isDebug() {
         return debug;
+    }
+
+    @SuppressWarnings("unused")
+    public boolean isDownloadArtifacts() {
+        return downloadArtifacts;
     }
 
     public boolean isLabelRestriction() {
@@ -191,6 +199,10 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
                 ivySettingsUrl == null ? ivySettingsFilePath.getRemote() : ivySettingsUrl
                         .toString()));
 
+        if ( downloadArtifacts ) {
+            log.info("Artifacts in dependencies will be downloaded");
+        }
+
         PropertiesFileContentExtractor propertiesFileContentExtractor = new PropertiesFileContentExtractor(new FilePathFactory());
         String propertiesFileContent = propertiesFileContentExtractor.extractPropertiesFileContents(propertiesFilePath, project, pollingNode, log, envVars);
         String propertiesContentResolved = Util.replaceMacro(propertiesContent, envVars);
@@ -221,7 +233,7 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
         if (launcherNode != null) {
             FilePath launcherFilePath = launcherNode.getRootPath();
             if (launcherFilePath != null) {
-                dependenciesMap = launcherFilePath.act(new IvyTriggerEvaluator(job.getName(), ivyFilePath, ivySettingsFilePath, ivySettingsURL, propertiesFilePath, propertiesContent, log, debug, envVars));
+                dependenciesMap = launcherFilePath.act(new IvyTriggerEvaluator(job.getName(), ivyFilePath, ivySettingsFilePath, ivySettingsURL, propertiesFilePath, propertiesContent, log, debug, downloadArtifacts, envVars));
             }
         }
         return dependenciesMap;
@@ -240,7 +252,7 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
         try {
             settingsUrl = new URL(filename);
         } catch (MalformedURLException e) {
-            log.info("URL is not well-fotmatted. Assuming it is a local file: " + filename);
+            log.info("URL is not well-formatted. Assuming it is a local file: " + filename);
             return null;
         }
         final String scheme = settingsUrl.getProtocol();
@@ -359,12 +371,19 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
             log.info("....The number of artifacts of the dependency has changed.");
         }
 
-        //Check if there is at least one change to previous recording artifacts
-        log.info("...Checking comparison to previous recorded artifacts.");
-        for (IvyArtifactValue ivyArtifactValue : previousArtifactValueList) {
-            if (isArtifactsChanged(log, ivyArtifactValue, newArtifactValueList)) {
-                return true;
+        // Check if there is at least one change to previous recording artifacts
+        // Only do this if we've been told to download artifacts. Otherwise there is
+        // nothing to compare.
+        if ( downloadArtifacts ) {
+            log.info("...Checking comparison to previous recorded artifacts.");
+            for ( IvyArtifactValue ivyArtifactValue : previousArtifactValueList ) {
+                if ( isArtifactsChanged(log, ivyArtifactValue, newArtifactValueList) ) {
+                    return true;
+                }
             }
+        }
+        else {
+            log.info("...Artifacts were not configured for download, no individual artifact checks made.");
         }
 
         return false;
