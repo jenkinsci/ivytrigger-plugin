@@ -176,7 +176,9 @@ public class IvyTriggerEvaluator implements FilePath.FileCallable<Map<String, Iv
                 final String result = IOUtils.toString(is);
                 return result;
             } finally {
-                is.close();
+                if ( is != null ) {
+                    is.close();
+                }
             }
         }
     }
