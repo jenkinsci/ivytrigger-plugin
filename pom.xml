@@ -10,7 +10,7 @@
     <artifactId>ivytrigger</artifactId>
     <packaging>hpi</packaging>
     <name>Jenkins IvyTrigger Plug-in</name>
-    <version>0.34-SNAPSHOT</version>
+    <version>0.34</version>
     <url>http://wiki.jenkins-ci.org/display/JENKINS/IvyTrigger+Plugin</url>
 
     <licenses>
@@ -105,7 +105,7 @@
     <scm>
         <connection>scm:git:https://github.com/jenkinsci/ivytrigger-plugin.git</connection>
         <developerConnection>scm:git:https://github.com/jenkinsci/ivytrigger-plugin.git</developerConnection>
-      <tag>HEAD</tag>
+      <tag>ivytrigger-0.34</tag>
   </scm>
 
     <repositories>
