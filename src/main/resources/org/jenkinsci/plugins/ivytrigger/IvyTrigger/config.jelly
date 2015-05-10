@@ -23,6 +23,11 @@
         <f:checkbox name="debug" checked="${instance.debug}"/>
     </f:entry>
 
+    <f:entry field="downloadArtifacts"
+             title="${%Download artifacts for dependencies to see if they have changed}">
+        <f:checkbox name="downloadArtifacts" checked="${instance.downloadArtifacts}" default="true"/>
+    </f:entry>
+
     <f:entry field="enableConcurrentBuild" title="${%Enable Concurrent Build}">
         <f:checkbox name="enableConcurrentBuild" checked="${instance.enableConcurrentBuild}"/>
     </f:entry>
