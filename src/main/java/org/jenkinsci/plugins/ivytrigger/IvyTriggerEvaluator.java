@@ -120,7 +120,7 @@ public class IvyTriggerEvaluator extends MasterToSlaveFileCallable<Map<String, I
 
             String settingsContent = getIvySettingsContents();
             tempSettingsFile = File.createTempFile("file", ".tmp");
-            FileUtils.write(tempSettingsFile, settingsContent);
+            FileUtils.write(tempSettingsFile, settingsContent, StandardCharsets.UTF_8);
 
             IvySettings ivySettings = new IvySettings(variables);
             ivySettings.load(tempSettingsFile);
@@ -150,11 +150,11 @@ public class IvyTriggerEvaluator extends MasterToSlaveFileCallable<Map<String, I
     private String getIvySettingsContents() throws IOException {
         if (ivySettingsFilePath != null) {
             log.info("Getting settings from file " + ivySettingsFilePath.getRemote());
-            return FileUtils.readFileToString(new File(ivySettingsFilePath.getRemote()));
+            return FileUtils.readFileToString(new File(ivySettingsFilePath.getRemote()), StandardCharsets.UTF_8);
         } else {
             log.info("Getting settings from URL " + ivySettingsURL.toString());
             try (InputStream is = ivySettingsURL.openStream()) {
-                return IOUtils.toString(is);
+                return IOUtils.toString(is, StandardCharsets.UTF_8);
             }
         }
     }
