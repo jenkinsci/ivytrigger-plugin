@@ -314,7 +314,7 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
         }
 
         if (previousDependencies.size() != newComputedDependencies.size()) {
-            log.info(String.format("\nThe number of resolved dependencies has changed."));
+            log.info("\nThe number of resolved dependencies has changed.");
             setNewContext(newIvyTriggerContext);
             return true;
         }
