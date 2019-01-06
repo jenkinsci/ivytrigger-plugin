@@ -63,7 +63,7 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
         this.propertiesContent = Util.fixEmptyAndTrim(propertiesContent);
         this.debug = debug;
         this.downloadArtifacts = downloadArtifacts;
-        this.labelRestriction = (labelRestriction == null) ? false : true;
+        this.labelRestriction = labelRestriction != null;
         this.enableConcurrentBuild = enableConcurrentBuild;
     }
 
