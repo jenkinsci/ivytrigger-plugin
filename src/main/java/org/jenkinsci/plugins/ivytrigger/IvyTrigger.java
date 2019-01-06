@@ -209,10 +209,8 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
             log.info("Temporary properties file path: " + temporaryPropertiesFilePath.getName());
             dependencies = getDependenciesMapForNode(pollingNode, log, ivyFilePath, ivySettingsFilePath, ivySettingsUrl, temporaryPropertiesFilePath, propertiesContentResolved, envVars);
             temporaryPropertiesFilePath.delete();
-        } catch (IOException ioe) {
-            throw new XTriggerException(ioe);
-        } catch (InterruptedException ie) {
-            throw new XTriggerException(ie);
+        } catch (IOException | InterruptedException e) {
+            throw new XTriggerException(e);
         }
         return new IvyTriggerContext(dependencies);
     }

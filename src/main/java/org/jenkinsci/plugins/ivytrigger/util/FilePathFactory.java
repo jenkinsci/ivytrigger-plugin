@@ -62,10 +62,8 @@ public class FilePathFactory {
                 return null;
             }
 
-        } catch (IOException ioe) {
-            throw new XTriggerException(ioe);
-        } catch (InterruptedException ie) {
-            throw new XTriggerException(ie);
+        } catch (IOException | InterruptedException e) {
+            throw new XTriggerException(e);
         }
     }
 

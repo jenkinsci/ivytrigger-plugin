@@ -130,10 +130,8 @@ public class IvyTriggerEvaluator extends MasterToSlaveFileCallable<Map<String, I
 
             return ivy;
 
-        } catch (ParseException pe) {
-            throw new XTriggerException(pe);
-        } catch (IOException ioe) {
-            throw new XTriggerException(ioe);
+        } catch (ParseException | IOException e) {
+            throw new XTriggerException(e);
         } finally {
             if (tempSettingsFile != null) {
                 if (!tempSettingsFile.delete()) {
@@ -205,10 +203,8 @@ public class IvyTriggerEvaluator extends MasterToSlaveFileCallable<Map<String, I
                 }
             }
 
-        } catch (IOException ioe) {
-            throw new XTriggerException(ioe);
-        } catch (InterruptedException ie) {
-            throw new XTriggerException(ie);
+        } catch (IOException | InterruptedException e) {
+            throw new XTriggerException(e);
         }
 
         return variables;
