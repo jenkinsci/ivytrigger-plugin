@@ -27,20 +27,24 @@ public class PropertiesFileContentExtractor {
     /**
      * Given a propertiesFilePath value, will split that value into multiple paths, read the content from the resolved file names
      * and return the content.
-     * <p/>
+     * <p>
      * The content of the property files is assumed to be in properties file format. e.g.:
      * prop1=1
      * prop2=2
      * prop3=3
-     * <p/>
+     * <p>
      * As an example, if the propertiesFilePath is "a.properties;b.properties", that a.properties contains prop1=2 and that
      * b.properties contains prop2=3, the method will return:
      * prop1=2
      * prop2=3
      *
      * @param propertiesFilePath If this value is empty or null, the method will return an empty string.
-     * @return The aggregated content of the properties files
-     * @throws XTriggerException
+     * @param job The job whose workspace is used to resolve the property files.
+     * @param pollingNode Jenkins agent used to resolve the property files on. If not provided, Jenkins master is used.
+     * @param log Used for logging.
+     * @param envVars Environment variables used to resolve in the file paths.
+     * @return The aggregated content of the properties files.
+     * @throws XTriggerException On error.
      */
     public String extractPropertiesFileContents(String propertiesFilePath, AbstractProject job, Node pollingNode, XTriggerLog log, Map<String, String> envVars) throws XTriggerException {
 
@@ -68,10 +72,13 @@ public class PropertiesFileContentExtractor {
 
 
     /**
-     * Utility method that:
-     * 1) Splits the value on semi-colon. Right now, this is a hard coded value. Could probably be refactored to use a configurable value
-     * 2) Trims the values
-     * 3) Returns a list of the fixed up values.
+     * Splits the value on semi-colon and trims each path.
+     * <p>
+     * Right now, the separator is a hard coded value.
+     * It could probably be refactored to use a configurable value.
+     *
+     * @param propertiesFilePath The semi-colon separated value to split.
+     * @return The list of paths.
      */
     public List<String> splitFilePaths(String propertiesFilePath) {
         List<String> filePathList = new ArrayList<String>();
