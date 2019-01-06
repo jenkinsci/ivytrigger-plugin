@@ -63,8 +63,8 @@ public class PropertiesFileContentExtractor {
                 log.info("Resolved properties file value: " + fp.getRemote());
                 fileContent += IOUtils.toString(fp.read()) + "\n";
             }
-        } catch (IOException ioe) {
-            throw new XTriggerException(ioe);
+        } catch (IOException | InterruptedException e) {
+            throw new XTriggerException(e);
         }
 
         return fileContent;

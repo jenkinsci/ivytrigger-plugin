@@ -1,3 +1,4 @@
+<?jelly escape-by-default='true'?>
 <div>
     The plug-in makes it possible to monitor dependencies from an Ivy descriptor.
 </div>
