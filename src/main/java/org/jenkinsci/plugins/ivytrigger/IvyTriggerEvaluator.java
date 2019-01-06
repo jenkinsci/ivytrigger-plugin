@@ -152,15 +152,8 @@ public class IvyTriggerEvaluator extends MasterToSlaveFileCallable<Map<String, I
             return FileUtils.readFileToString(new File(ivySettingsFilePath.getRemote()));
         } else {
             log.info("Getting settings from URL " + ivySettingsURL.toString());
-            InputStream is = null;
-            try {
-                log.info("Getting settings from URL");
-                is = ivySettingsURL.openStream();
+            try (InputStream is = ivySettingsURL.openStream()) {
                 return IOUtils.toString(is);
-            } finally {
-                if ( is != null ) {
-                    is.close();
-                }
             }
         }
     }
@@ -181,9 +174,9 @@ public class IvyTriggerEvaluator extends MasterToSlaveFileCallable<Map<String, I
                     @Override
                     public Void invoke(File f, VirtualChannel channel) throws IOException, InterruptedException {
                         Properties properties = new Properties();
-                        FileReader fileReader = new FileReader(propertiesFilePath.getRemote());
-                        properties.load(fileReader);
-                        fileReader.close();
+                        try (Reader fileReader = new FileReader(propertiesFilePath.getRemote())) {
+                            properties.load(fileReader);
+                        }
                         for (Map.Entry<Object, Object> entry : properties.entrySet()) {
                             variables.put(String.valueOf(entry.getKey()), String.valueOf(entry.getValue()));
                         }
@@ -195,9 +188,9 @@ public class IvyTriggerEvaluator extends MasterToSlaveFileCallable<Map<String, I
 
             if (propertiesContent != null) {
                 Properties properties = new Properties();
-                StringReader stringReader = new StringReader(propertiesContent);
-                properties.load(stringReader);
-                stringReader.close();
+                try (Reader stringReader = new StringReader(propertiesContent)) {
+                    properties.load(stringReader);
+                }
                 for (Map.Entry<Object, Object> entry : properties.entrySet()) {
                     variables.put(String.valueOf(entry.getKey()), String.valueOf(entry.getValue()));
                 }
