@@ -50,10 +50,6 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
 
     private boolean downloadArtifacts;
 
-    private transient FilePathFactory filePathFactory;
-
-    private transient PropertiesFileContentExtractor propertiesFileContentExtractor;
-
     @DataBoundConstructor
     public IvyTrigger(String cronTabSpec, String ivyPath, String ivySettingsPath, String propertiesFilePath, String propertiesContent, LabelRestrictionClass labelRestriction, boolean enableConcurrentBuild, boolean debug, boolean downloadArtifacts) throws ANTLRException {
         super(cronTabSpec, (labelRestriction == null) ? null : labelRestriction.getTriggerLabel(), enableConcurrentBuild);
