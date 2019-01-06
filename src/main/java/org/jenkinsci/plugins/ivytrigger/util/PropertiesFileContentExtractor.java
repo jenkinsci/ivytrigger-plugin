@@ -50,24 +50,25 @@ public class PropertiesFileContentExtractor {
 
         log.info("Given job properties file path: " + propertiesFilePath);
 
-        String fileContent = "";
-
         if (StringUtils.isEmpty(propertiesFilePath)) {
-            return fileContent;
+            return "";
         }
 
+        StringBuilder fileContent = new StringBuilder();
         List<String> filePaths = splitFilePaths(propertiesFilePath);
+
         try {
             for (String path : filePaths) {
                 FilePath fp = filePathFactory.getDescriptorFilePath(path, job, pollingNode, log, envVars);
                 log.info("Resolved properties file value: " + fp.getRemote());
-                fileContent += IOUtils.toString(fp.read()) + "\n";
+                fileContent.append(IOUtils.toString(fp.read()));
+                fileContent.append("\n");
             }
         } catch (IOException | InterruptedException e) {
             throw new XTriggerException(e);
         }
 
-        return fileContent;
+        return fileContent.toString();
     }
 
 
