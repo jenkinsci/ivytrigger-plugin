@@ -34,6 +34,8 @@ import java.util.*;
  */
 public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> implements Serializable {
 
+    private static final long serialVersionUID = 1L;
+
     private final String ivyPath;
 
     private final String ivySettingsPath;
