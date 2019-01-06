@@ -81,7 +81,7 @@ public class PropertiesFileContentExtractor {
      * @return The list of paths.
      */
     public List<String> splitFilePaths(String propertiesFilePath) {
-        List<String> filePathList = new ArrayList<String>();
+        List<String> filePathList = new ArrayList<>();
 
         String[] paths = StringUtils.split(propertiesFilePath, ";");
         for (String path : paths) {

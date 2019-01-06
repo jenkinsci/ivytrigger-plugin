@@ -169,7 +169,7 @@ public class IvyTriggerEvaluator extends MasterToSlaveFileCallable<Map<String, I
 
     private Map<String, String> getVariables() throws XTriggerException {
         //we want variables to be sorted
-        final Map<String, String> variables = new TreeMap<String, String>();
+        final Map<String, String> variables = new TreeMap<>();
         try {
 
             //Inject variables from dependencies properties and envVars
@@ -226,14 +226,14 @@ public class IvyTriggerEvaluator extends MasterToSlaveFileCallable<Map<String, I
 
         List dependencies = resolveReport.getDependencies();
 
-        Map<String, IvyDependencyValue> result = new HashMap<String, IvyDependencyValue>();
+        Map<String, IvyDependencyValue> result = new HashMap<>();
         for (Object dependencyObject : dependencies) {
             try {
                 IvyNode dependencyNode = (IvyNode) dependencyObject;
                 ModuleRevisionId moduleRevisionId = dependencyNode.getResolvedId();
                 String moduleRevision = moduleRevisionId.getRevision();
 
-                List<IvyArtifactValue> ivyArtifactValues = new ArrayList<IvyArtifactValue>();
+                List<IvyArtifactValue> ivyArtifactValues = new ArrayList<>();
 
                 if ( dependencyNode.isDownloaded() ) {
                     Artifact[] artifacts = dependencyNode.getAllArtifacts();

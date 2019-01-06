@@ -148,7 +148,7 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
 
         @SuppressWarnings("unused")
         public void writeLogTo(XMLOutput out) throws IOException {
-            new AnnotatedLargeText<InternalIvyTriggerAction>(getLogFile(), Charset.defaultCharset(), true, this).writeHtmlTo(0, out.asWriter());
+            new AnnotatedLargeText<>(getLogFile(), Charset.defaultCharset(), true, this).writeHtmlTo(0, out.asWriter());
         }
     }
 
