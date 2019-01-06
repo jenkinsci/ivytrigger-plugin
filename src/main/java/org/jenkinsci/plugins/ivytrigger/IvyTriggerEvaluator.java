@@ -85,7 +85,7 @@ public class IvyTriggerEvaluator implements FilePath.FileCallable<Map<String, Iv
             if (resolveReport.hasError()) {
                 List problems = resolveReport.getAllProblemMessages();
                 if (problems != null && !problems.isEmpty()) {
-                    StringBuffer errorMsgs = new StringBuffer();
+                    StringBuilder errorMsgs = new StringBuilder();
                     errorMsgs.append("Errors:\n");
                     for (Object problem : problems) {
                         errorMsgs.append(problem);
@@ -117,19 +117,19 @@ public class IvyTriggerEvaluator implements FilePath.FileCallable<Map<String, Iv
         try {
 
             //------------ENV_VAR_
-            StringBuffer envVarsContent = new StringBuffer();
+            StringBuilder envVarsContent = new StringBuilder();
             for (Map.Entry<String, String> entry : variables.entrySet()) {
                 envVarsContent.append(String.format("<property name=\"%s\" value=\"%s\"/>\n", entry.getKey(), entry.getValue()));
             }
 
             //-----------Inject properties files
             String settingsContent = getIvySettingsContents();
-            StringBuffer stringBuffer = new StringBuffer(settingsContent);
-            int index = stringBuffer.indexOf("<ivysettings>");
-            stringBuffer.insert(index + "<ivysettings>".length() + 1, envVarsContent.toString());
+            StringBuilder ivySettingsContent = new StringBuilder(settingsContent);
+            int index = ivySettingsContent.indexOf("<ivysettings>");
+            ivySettingsContent.insert(index + "<ivysettings>".length() + 1, envVarsContent.toString());
             tempSettings = File.createTempFile("file", ".tmp");
             FileOutputStream fileOutputStream = new FileOutputStream(tempSettings);
-            fileOutputStream.write(stringBuffer.toString().getBytes());
+            fileOutputStream.write(ivySettingsContent.toString().getBytes());
 
             IvySettings ivySettings = new IvySettings();
             ivySettings.load(tempSettings);
