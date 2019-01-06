@@ -71,7 +71,6 @@ public class IvyTriggerEvaluator implements FilePath.FileCallable<Map<String, Iv
     }
 
     public Map<String, IvyDependencyValue> invoke(File launchDir, VirtualChannel channel) throws IOException, InterruptedException {
-        Map<String, IvyDependencyValue> result;
         try {
             Ivy ivy = getIvyObject(launchDir, log);
             log.info("\nResolving Ivy dependencies.");
@@ -96,7 +95,7 @@ public class IvyTriggerEvaluator implements FilePath.FileCallable<Map<String, Iv
                 }
             }
 
-            result = getMapDependencies(ivy, resolveReport, log);
+            return getMapDependencies(ivy, resolveReport, log);
 
         } catch (ParseException pe) {
             log.error("Parsing error: " + pe.getMessage());
@@ -108,8 +107,6 @@ public class IvyTriggerEvaluator implements FilePath.FileCallable<Map<String, Iv
             log.error("XTrigger exception: " + xe.getMessage());
             return null;
         }
-
-        return result;
     }
 
     private Ivy getIvyObject(File launchDir, XTriggerLog log) throws XTriggerException {
@@ -173,8 +170,7 @@ public class IvyTriggerEvaluator implements FilePath.FileCallable<Map<String, Iv
             try {
                 log.info("Getting settings from URL");
                 is = ivySettingsURL.openStream();
-                final String result = IOUtils.toString(is);
-                return result;
+                return IOUtils.toString(is);
             } finally {
                 if ( is != null ) {
                     is.close();
