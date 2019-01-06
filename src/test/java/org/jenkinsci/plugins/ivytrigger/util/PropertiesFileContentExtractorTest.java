@@ -47,7 +47,6 @@ public class PropertiesFileContentExtractorTest {
         this.filePathFactory = null;
         this.envVars = null;
         this.log = null;
-        ;
     }
 
     @Test
