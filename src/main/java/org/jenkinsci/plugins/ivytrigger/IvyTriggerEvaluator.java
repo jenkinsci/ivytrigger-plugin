@@ -273,7 +273,6 @@ public class IvyTriggerEvaluator implements FilePath.FileCallable<Map<String, Iv
                 result.put(dependencyNode.getId().toString(), new IvyDependencyValue(moduleRevision, ivyArtifactValues));
             } catch (Throwable e) {
                 log.error(String.format("Can't retrieve artifacts for dependency" + (IvyNode) dependencyObject));
-                continue;
             }
         }
 
