@@ -9,6 +9,7 @@ import org.jenkinsci.lib.xtrigger.XTriggerException;
 import org.jenkinsci.lib.xtrigger.XTriggerLog;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -61,7 +62,7 @@ public class PropertiesFileContentExtractor {
             for (String path : filePaths) {
                 FilePath fp = filePathFactory.getDescriptorFilePath(path, job, pollingNode, log, envVars);
                 log.info("Resolved properties file value: " + fp.getRemote());
-                fileContent.append(IOUtils.toString(fp.read()));
+                fileContent.append(IOUtils.toString(fp.read(), StandardCharsets.ISO_8859_1));
                 fileContent.append("\n");
             }
         } catch (IOException | InterruptedException e) {

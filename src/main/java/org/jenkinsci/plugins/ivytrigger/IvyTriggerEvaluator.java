@@ -23,6 +23,7 @@ import org.jenkinsci.lib.xtrigger.XTriggerLog;
 
 import java.io.*;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.util.*;
 
@@ -174,8 +175,9 @@ public class IvyTriggerEvaluator extends MasterToSlaveFileCallable<Map<String, I
                     @Override
                     public Void invoke(File f, VirtualChannel channel) throws IOException, InterruptedException {
                         Properties properties = new Properties();
-                        try (Reader fileReader = new FileReader(propertiesFilePath.getRemote())) {
-                            properties.load(fileReader);
+                        try (InputStream stream = new FileInputStream(propertiesFilePath.getRemote());
+                             Reader streamReader = new InputStreamReader(stream, StandardCharsets.ISO_8859_1)) {
+                            properties.load(streamReader);
                         }
                         for (Map.Entry<Object, Object> entry : properties.entrySet()) {
                             variables.put(String.valueOf(entry.getKey()), String.valueOf(entry.getValue()));
