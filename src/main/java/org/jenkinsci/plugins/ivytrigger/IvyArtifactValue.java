@@ -7,11 +7,11 @@ import java.io.Serializable;
  */
 public class IvyArtifactValue implements Serializable {
 
-    private String name;
+    private final String name;
 
-    private String extension;
+    private final String extension;
 
-    private long lastModificationDate;
+    private final long lastModificationDate;
 
     public IvyArtifactValue(String name, String extension, long lastModificationDate) {
         this.name = name;

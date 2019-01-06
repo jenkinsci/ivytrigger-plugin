@@ -2,7 +2,6 @@ package org.jenkinsci.plugins.ivytrigger;
 
 import org.jenkinsci.lib.xtrigger.XTriggerContext;
 
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -10,7 +9,7 @@ import java.util.Map;
  */
 public class IvyTriggerContext implements XTriggerContext {
 
-    private Map<String, IvyDependencyValue> dependencies = new HashMap<String, IvyDependencyValue>();
+    private final Map<String, IvyDependencyValue> dependencies;
 
     public IvyTriggerContext(Map<String, IvyDependencyValue> dependencies) {
         this.dependencies = dependencies;

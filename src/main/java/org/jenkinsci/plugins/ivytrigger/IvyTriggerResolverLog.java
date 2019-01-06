@@ -8,9 +8,9 @@ import org.jenkinsci.lib.xtrigger.XTriggerLog;
  */
 public class IvyTriggerResolverLog extends AbstractMessageLogger {
 
-    private XTriggerLog log;
+    private final XTriggerLog log;
 
-    private boolean debug;
+    private final boolean debug;
 
     public IvyTriggerResolverLog(XTriggerLog xTriggerLog, boolean debug) {
         this.log = xTriggerLog;

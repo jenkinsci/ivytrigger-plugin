@@ -7,7 +7,7 @@ import org.kohsuke.stapler.DataBoundConstructor;
  */
 public class LabelRestrictionClass {
 
-    private String triggerLabel;
+    private final String triggerLabel;
 
     @DataBoundConstructor
     public LabelRestrictionClass(String triggerLabel) {

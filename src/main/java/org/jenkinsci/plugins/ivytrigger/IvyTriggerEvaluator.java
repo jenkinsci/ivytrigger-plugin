@@ -28,25 +28,25 @@ import java.util.*;
  */
 public class IvyTriggerEvaluator implements FilePath.FileCallable<Map<String, IvyDependencyValue>> {
 
-    private String namespace;
+    private final String namespace;
 
-    private FilePath ivyFilePath;
+    private final FilePath ivyFilePath;
 
-    private FilePath ivySettingsFilePath;
+    private final FilePath ivySettingsFilePath;
 
     private final URL ivySettingsURL;
 
-    private FilePath propertiesFilePath;
+    private final FilePath propertiesFilePath;
 
-    private String propertiesContent;
+    private final String propertiesContent;
 
-    private XTriggerLog log;
+    private final XTriggerLog log;
 
-    private boolean debug;
+    private final boolean debug;
 
     private final boolean downloadArtifacts;
 
-    private Map<String, String> envVars;
+    private final Map<String, String> envVars;
 
     public IvyTriggerEvaluator(String namespace,
                                FilePath ivyFilePath,

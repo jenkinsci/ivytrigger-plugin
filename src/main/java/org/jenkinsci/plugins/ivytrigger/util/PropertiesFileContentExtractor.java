@@ -18,7 +18,7 @@ import java.util.Map;
  */
 public class PropertiesFileContentExtractor {
 
-    private FilePathFactory filePathFactory;
+    private final FilePathFactory filePathFactory;
 
     public PropertiesFileContentExtractor(FilePathFactory filePathFactory) {
         this.filePathFactory = filePathFactory;

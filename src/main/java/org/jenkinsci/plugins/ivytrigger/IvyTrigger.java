@@ -34,21 +34,21 @@ import java.util.*;
  */
 public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> implements Serializable {
 
-    private String ivyPath;
+    private final String ivyPath;
 
-    private String ivySettingsPath;
+    private final String ivySettingsPath;
 
-    private String propertiesFilePath;
+    private final String propertiesFilePath;
 
-    private String propertiesContent;
+    private final String propertiesContent;
 
-    private boolean debug;
+    private final boolean debug;
 
-    private boolean labelRestriction;
+    private final boolean labelRestriction;
 
-    private boolean enableConcurrentBuild;
+    private final boolean enableConcurrentBuild;
 
-    private boolean downloadArtifacts;
+    private final boolean downloadArtifacts;
 
     @DataBoundConstructor
     public IvyTrigger(String cronTabSpec, String ivyPath, String ivySettingsPath, String propertiesFilePath, String propertiesContent, LabelRestrictionClass labelRestriction, boolean enableConcurrentBuild, boolean debug, boolean downloadArtifacts) throws ANTLRException {
@@ -110,7 +110,7 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
 
     public final class InternalIvyTriggerAction extends IvyTriggerAction {
 
-        private transient String label;
+        private final transient String label;
 
         public InternalIvyTriggerAction(String label) {
             this.label = label;
