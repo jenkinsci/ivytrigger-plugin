@@ -196,7 +196,7 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
                         .toString()));
 
         if ( downloadArtifacts ) {
-            log.info("Artifacts in dependencies will be downloaded");
+            log.info("Artifacts in dependencies will be downloaded.");
         }
 
         PropertiesFileContentExtractor propertiesFileContentExtractor = new PropertiesFileContentExtractor(new FilePathFactory());
@@ -206,7 +206,7 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
         Map<String, IvyDependencyValue> dependencies;
         try {
             FilePath temporaryPropertiesFilePath = pollingNode.getRootPath().createTextTempFile("props", "props", propertiesFileContent);
-            log.info("Temporary properties file path is " + temporaryPropertiesFilePath.getName());
+            log.info("Temporary properties file path: " + temporaryPropertiesFilePath.getName());
             dependencies = getDependenciesMapForNode(pollingNode, log, ivyFilePath, ivySettingsFilePath, ivySettingsUrl, temporaryPropertiesFilePath, propertiesContentResolved, envVars);
             temporaryPropertiesFilePath.delete();
         } catch (IOException ioe) {
@@ -455,7 +455,7 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
 
         @Override
         public String getDisplayName() {
-            return "[IvyTrigger] - Poll with an Ivy script";
+            return "IvyTrigger - Poll with an Ivy script";
         }
     }
 

@@ -48,7 +48,7 @@ public class PropertiesFileContentExtractor {
      */
     public String extractPropertiesFileContents(String propertiesFilePath, AbstractProject job, Node pollingNode, XTriggerLog log, Map<String, String> envVars) throws XTriggerException {
 
-        log.info("Given job  properties file path: " + propertiesFilePath);
+        log.info("Given job properties file path: " + propertiesFilePath);
 
         String fileContent = "";
 
@@ -60,7 +60,7 @@ public class PropertiesFileContentExtractor {
         try {
             for (String path : filePaths) {
                 FilePath fp = filePathFactory.getDescriptorFilePath(path, job, pollingNode, log, envVars);
-                log.info("Resolved properties file value : " + fp.getRemote());
+                log.info("Resolved properties file value: " + fp.getRemote());
                 fileContent += IOUtils.toString(fp.read()) + "\n";
             }
         } catch (IOException ioe) {
