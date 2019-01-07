@@ -57,10 +57,10 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
     @DataBoundConstructor
     public IvyTrigger(String cronTabSpec, String ivyPath, String ivySettingsPath, String propertiesFilePath, String propertiesContent, LabelRestrictionClass labelRestriction, boolean enableConcurrentBuild, boolean debug, boolean downloadArtifacts) throws ANTLRException {
         super(cronTabSpec, (labelRestriction == null) ? null : labelRestriction.getTriggerLabel(), enableConcurrentBuild);
-        this.ivyPath = Util.fixEmpty(ivyPath);
-        this.ivySettingsPath = Util.fixEmpty(ivySettingsPath);
-        this.propertiesFilePath = Util.fixEmpty(propertiesFilePath);
-        this.propertiesContent = Util.fixEmpty(propertiesContent);
+        this.ivyPath = Util.fixEmptyAndTrim(ivyPath);
+        this.ivySettingsPath = Util.fixEmptyAndTrim(ivySettingsPath);
+        this.propertiesFilePath = Util.fixEmptyAndTrim(propertiesFilePath);
+        this.propertiesContent = Util.fixEmptyAndTrim(propertiesContent);
         this.debug = debug;
         this.downloadArtifacts = downloadArtifacts;
         this.labelRestriction = (labelRestriction == null) ? false : true;
