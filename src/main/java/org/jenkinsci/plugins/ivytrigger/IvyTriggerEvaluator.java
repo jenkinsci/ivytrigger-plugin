@@ -16,6 +16,8 @@ import org.apache.ivy.core.report.ResolveReport;
 import org.apache.ivy.core.resolve.IvyNode;
 import org.apache.ivy.core.resolve.ResolveOptions;
 import org.apache.ivy.core.settings.IvySettings;
+import org.apache.ivy.core.settings.IvyVariableContainer;
+import org.apache.ivy.core.settings.IvyVariableContainerImpl;
 import org.jenkinsci.lib.xtrigger.XTriggerException;
 import org.jenkinsci.lib.xtrigger.XTriggerLog;
 
@@ -80,10 +82,9 @@ public class IvyTriggerEvaluator extends MasterToSlaveFileCallable<Map<String, I
             ResolveOptions options = new ResolveOptions();
             options.setDownload(downloadArtifacts);
 
-            // Need to be able to pass a URL to resolve() so that we can also pass in some options
-            final URL ivyFileURL = new File(ivyFilePath.getRemote()).toURI().toURL();
+            File ivyFile = new File(ivyFilePath.getRemote());
 
-            ResolveReport resolveReport = ivy.resolve(ivyFileURL, options);
+            ResolveReport resolveReport = ivy.resolve(ivyFile, options);
             if (resolveReport.hasError()) {
                 List problems = resolveReport.getAllProblemMessages();
                 if (problems != null && !problems.isEmpty()) {
@@ -112,36 +113,20 @@ public class IvyTriggerEvaluator extends MasterToSlaveFileCallable<Map<String, I
     }
 
     private Ivy getIvyObject(File launchDir, XTriggerLog log) throws XTriggerException {
-
-        Map<String, String> variables = getVariables();
-
-        File tempSettings = null;
+        File tempSettingsFile = null;
         try {
+            IvyVariableContainer variables = new IvyVariableContainerImpl(getVariables());
 
-            //------------ENV_VAR_
-            StringBuilder envVarsContent = new StringBuilder();
-            for (Map.Entry<String, String> entry : variables.entrySet()) {
-                envVarsContent.append(String.format("<property name=\"%s\" value=\"%s\"/>\n", entry.getKey(), entry.getValue()));
-            }
-
-            //-----------Inject properties files
             String settingsContent = getIvySettingsContents();
-            StringBuilder ivySettingsContent = new StringBuilder(settingsContent);
-            int index = ivySettingsContent.indexOf("<ivysettings>");
-            ivySettingsContent.insert(index + "<ivysettings>".length() + 1, envVarsContent.toString());
-            tempSettings = File.createTempFile("file", ".tmp");
-            FileOutputStream fileOutputStream = new FileOutputStream(tempSettings);
-            fileOutputStream.write(ivySettingsContent.toString().getBytes());
+            tempSettingsFile = File.createTempFile("file", ".tmp");
+            FileUtils.write(tempSettingsFile, settingsContent);
 
-            IvySettings ivySettings = new IvySettings();
-            ivySettings.load(tempSettings);
+            IvySettings ivySettings = new IvySettings(variables);
+            ivySettings.load(tempSettingsFile);
             ivySettings.setDefaultCache(getAndInitCacheDir(launchDir));
 
             Ivy ivy = Ivy.newInstance(ivySettings);
             ivy.getLoggerEngine().pushLogger(new IvyTriggerResolverLog(log, debug));
-            for (Map.Entry<String, String> entry : variables.entrySet()) {
-                ivy.setVariable(entry.getKey(), entry.getValue());
-            }
 
             return ivy;
 
@@ -150,11 +135,12 @@ public class IvyTriggerEvaluator extends MasterToSlaveFileCallable<Map<String, I
         } catch (IOException ioe) {
             throw new XTriggerException(ioe);
         } finally {
-            if (tempSettings != null) {
-                tempSettings.delete();
+            if (tempSettingsFile != null) {
+                if (!tempSettingsFile.delete()) {
+                    log.error("Can't delete temporary file: " + tempSettingsFile);
+                }
             }
         }
-
     }
 
     /**
