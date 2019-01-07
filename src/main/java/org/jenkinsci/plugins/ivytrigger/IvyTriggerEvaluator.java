@@ -206,9 +206,9 @@ public class IvyTriggerEvaluator extends MasterToSlaveFileCallable<Map<String, I
     }
 
 
-    private File getAndInitCacheDir(File launchDir) {
+    private File getAndInitCacheDir(File launchDir) throws IOException {
         File cacheDir = new File(launchDir, "ivy-trigger-cache/" + namespace);
-        cacheDir.mkdirs();
+        FileUtils.forceMkdir(cacheDir);
         return cacheDir;
     }
 
