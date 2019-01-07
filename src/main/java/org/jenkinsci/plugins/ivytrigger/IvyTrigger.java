@@ -205,34 +205,25 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
         String propertiesFileContent = propertiesFileContentExtractor.extractPropertiesFileContents(propertiesFilePath, project, pollingNode, log, envVars);
         String propertiesContentResolved = Util.replaceMacro(propertiesContent, envVars);
 
-        Map<String, IvyDependencyValue> dependencies;
+        Map<String, IvyDependencyValue> dependencies = null;
         try {
-            FilePath temporaryPropertiesFilePath = pollingNode.getRootPath().createTextTempFile("props", "props", propertiesFileContent);
-            log.info("Temporary properties file path: " + temporaryPropertiesFilePath.getName());
-            dependencies = getDependenciesMapForNode(pollingNode, log, ivyFilePath, ivySettingsFilePath, ivySettingsUrl, temporaryPropertiesFilePath, propertiesContentResolved, envVars);
-            temporaryPropertiesFilePath.delete();
+            FilePath launcherFilePath = pollingNode.getRootPath();
+            if (launcherFilePath != null) {
+                FilePath temporaryPropertiesFilePath = null;
+                try {
+                    temporaryPropertiesFilePath = launcherFilePath.createTextTempFile("props", "props", propertiesFileContent);
+                    log.info("Temporary properties file path: " + temporaryPropertiesFilePath.getName());
+                    dependencies = launcherFilePath.act(new IvyTriggerEvaluator(job.getName(), ivyFilePath, ivySettingsFilePath, ivySettingsUrl, temporaryPropertiesFilePath, propertiesContentResolved, log, debug, downloadArtifacts, envVars));
+                } finally {
+                    if (temporaryPropertiesFilePath != null) {
+                        temporaryPropertiesFilePath.delete();
+                    }
+                }
+            }
         } catch (IOException | InterruptedException e) {
             throw new XTriggerException(e);
         }
         return new IvyTriggerContext(dependencies);
-    }
-
-    private Map<String, IvyDependencyValue> getDependenciesMapForNode(Node launcherNode,
-                                                                      XTriggerLog log,
-                                                                      FilePath ivyFilePath,
-                                                                      FilePath ivySettingsFilePath,
-                                                                      URL ivySettingsURL,
-                                                                      FilePath propertiesFilePath,
-                                                                      String propertiesContent,
-                                                                      Map<String, String> envVars) throws IOException, InterruptedException, XTriggerException {
-        Map<String, IvyDependencyValue> dependenciesMap = null;
-        if (launcherNode != null) {
-            FilePath launcherFilePath = launcherNode.getRootPath();
-            if (launcherFilePath != null) {
-                dependenciesMap = launcherFilePath.act(new IvyTriggerEvaluator(job.getName(), ivyFilePath, ivySettingsFilePath, ivySettingsURL, propertiesFilePath, propertiesContent, log, debug, downloadArtifacts, envVars));
-            }
-        }
-        return dependenciesMap;
     }
 
     /**
