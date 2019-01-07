@@ -38,5 +38,3 @@ public class IvyArtifactValue implements Serializable {
         return lastModificationDate;
     }
 }
-
-

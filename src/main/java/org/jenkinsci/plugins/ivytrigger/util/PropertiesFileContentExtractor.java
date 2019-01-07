@@ -48,7 +48,6 @@ public class PropertiesFileContentExtractor {
      * @throws XTriggerException On error.
      */
     public String extractPropertiesFileContents(String propertiesFilePath, AbstractProject job, Node pollingNode, XTriggerLog log, Map<String, String> envVars) throws XTriggerException {
-
         log.info("Given job properties file path: " + propertiesFilePath);
 
         if (StringUtils.isEmpty(propertiesFilePath)) {
@@ -71,7 +70,6 @@ public class PropertiesFileContentExtractor {
 
         return fileContent.toString();
     }
-
 
     /**
      * Splits the value on semi-colon and trims each path.

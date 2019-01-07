@@ -145,6 +145,7 @@ public class IvyTriggerEvaluator extends MasterToSlaveFileCallable<Map<String, I
     /**
      * Method retrieves Ivy Settings contents from URL or from file on
      * master/slave
+     *
      * @throws IOException on some IO exception occurs
      */
     private String getIvySettingsContents() throws IOException {
@@ -163,14 +164,12 @@ public class IvyTriggerEvaluator extends MasterToSlaveFileCallable<Map<String, I
         //we want variables to be sorted
         final Map<String, String> variables = new TreeMap<>();
         try {
-
             //Inject variables from dependencies properties and envVars
             if (envVars != null) {
                 variables.putAll(envVars);
             }
 
             if (propertiesFilePath != null) {
-
                 propertiesFilePath.act(new MasterToSlaveFileCallable<Void>() {
                     @Override
                     public Void invoke(File f, VirtualChannel channel) throws IOException, InterruptedException {
@@ -184,8 +183,7 @@ public class IvyTriggerEvaluator extends MasterToSlaveFileCallable<Map<String, I
                         }
                         return null;
                     }
-                }
-                );
+                });
             }
 
             if (propertiesContent != null) {
@@ -205,16 +203,13 @@ public class IvyTriggerEvaluator extends MasterToSlaveFileCallable<Map<String, I
         return variables;
     }
 
-
     private File getAndInitCacheDir(File launchDir) throws IOException {
         File cacheDir = new File(launchDir, "ivy-trigger-cache/" + namespace);
         FileUtils.forceMkdir(cacheDir);
         return cacheDir;
     }
 
-
     private Map<String, IvyDependencyValue> getMapDependencies(Ivy ivy, ResolveReport resolveReport, XTriggerLog log) {
-
         List dependencies = resolveReport.getDependencies();
 
         Map<String, IvyDependencyValue> result = new HashMap<>();
@@ -226,7 +221,7 @@ public class IvyTriggerEvaluator extends MasterToSlaveFileCallable<Map<String, I
 
                 List<IvyArtifactValue> ivyArtifactValues = new ArrayList<>();
 
-                if ( dependencyNode.isDownloaded() ) {
+                if (dependencyNode.isDownloaded()) {
                     Artifact[] artifacts = dependencyNode.getAllArtifacts();
 
                     if (artifacts != null) {
@@ -253,6 +248,5 @@ public class IvyTriggerEvaluator extends MasterToSlaveFileCallable<Map<String, I
         }
 
         return result;
-
     }
 }

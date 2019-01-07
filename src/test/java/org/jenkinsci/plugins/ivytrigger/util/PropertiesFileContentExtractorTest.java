@@ -25,6 +25,7 @@ import static org.mockito.Mockito.when;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({FilePath.class})
 public class PropertiesFileContentExtractorTest {
+
     private PropertiesFileContentExtractor propertiesFileContentExtractor;
     private FilePathFactory filePathFactory;
 

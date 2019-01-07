@@ -28,7 +28,6 @@ import java.net.URL;
 import java.nio.charset.Charset;
 import java.util.*;
 
-
 /**
  * @author Gregory Boissinot
  */
@@ -109,7 +108,6 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
         return Collections.singleton(action);
     }
 
-
     public final class InternalIvyTriggerAction extends IvyTriggerAction {
 
         private final transient String label;
@@ -154,7 +152,6 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
         }
     }
 
-
     @Override
     public boolean isContextOnStartupFetched() {
         return false;
@@ -162,7 +159,6 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
 
     @Override
     protected IvyTriggerContext getContext(Node pollingNode, XTriggerLog log) throws XTriggerException {
-
         log.info(String.format("Given job Ivy file value: %s", ivyPath));
         log.info(String.format("Given job Ivy settings file value: %s", ivySettingsPath));
 
@@ -197,7 +193,7 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
                 ivySettingsUrl == null ? ivySettingsFilePath.getRemote() : ivySettingsUrl
                         .toString()));
 
-        if ( downloadArtifacts ) {
+        if (downloadArtifacts) {
             log.info("Artifacts in dependencies will be downloaded.");
         }
 
@@ -229,10 +225,10 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
     /**
      * Method tests, whether the string specifies the local file or an URL. In
      * the second case, URL is returned.
+     *
      * @param filename filename to test
      * @param log log for he logging
-     * @return URL, if the specified filename is an URL, <code>null</code>
-     *         otherwise
+     * @return URL, if the specified filename is an URL, <code>null</code> otherwise
      */
     private static URL getRemoteURL(String filename, XTriggerLog log) {
         URL settingsUrl;
@@ -361,15 +357,14 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
         // Check if there is at least one change to previous recording artifacts
         // Only do this if we've been told to download artifacts. Otherwise there is
         // nothing to compare.
-        if ( downloadArtifacts ) {
+        if (downloadArtifacts) {
             log.info("...Checking comparison to previous recorded artifacts.");
-            for ( IvyArtifactValue ivyArtifactValue : previousArtifactValueList ) {
-                if ( isArtifactsChanged(log, ivyArtifactValue, newArtifactValueList) ) {
+            for (IvyArtifactValue ivyArtifactValue : previousArtifactValueList) {
+                if (isArtifactsChanged(log, ivyArtifactValue, newArtifactValueList)) {
                     return true;
                 }
             }
-        }
-        else {
+        } else {
             log.info("...Artifacts were not configured for download, no individual artifact checks made.");
         }
 
@@ -377,7 +372,6 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
     }
 
     private boolean isArtifactsChanged(XTriggerLog log, IvyArtifactValue previousIvyArtifactValue, List<IvyArtifactValue> newArtifactValueList) {
-
         log.info(String.format("....Checking previous recording artifact %s", previousIvyArtifactValue.getFullName()));
 
         //Get the new artifact with same coordinates
@@ -450,5 +444,4 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
             return "IvyTrigger - Poll with an Ivy script";
         }
     }
-
 }
