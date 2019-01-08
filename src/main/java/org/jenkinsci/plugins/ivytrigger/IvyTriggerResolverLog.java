@@ -29,6 +29,7 @@ public class IvyTriggerResolverLog extends AbstractMessageLogger {
         }
     }
 
+    @Override
     public void log(String msg, int level) {
         if (msg != null && msg.length() != 0) {
             if (debug) {
@@ -37,6 +38,7 @@ public class IvyTriggerResolverLog extends AbstractMessageLogger {
         }
     }
 
+    @Override
     public void rawlog(String msg, int level) {
         if (msg != null && msg.length() != 0) {
             log.info(msg);

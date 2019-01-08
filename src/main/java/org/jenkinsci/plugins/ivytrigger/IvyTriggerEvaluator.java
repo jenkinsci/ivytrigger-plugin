@@ -70,6 +70,7 @@ public class IvyTriggerEvaluator implements FilePath.FileCallable<Map<String, Iv
         this.envVars = envVars;
     }
 
+    @Override
     public Map<String, IvyDependencyValue> invoke(File launchDir, VirtualChannel channel) throws IOException, InterruptedException {
         try {
             Ivy ivy = getIvyObject(launchDir, log);
@@ -192,6 +193,7 @@ public class IvyTriggerEvaluator implements FilePath.FileCallable<Map<String, Iv
             if (propertiesFilePath != null) {
 
                 propertiesFilePath.act(new FilePath.FileCallable<Void>() {
+                    @Override
                     public Void invoke(File f, VirtualChannel channel) throws IOException, InterruptedException {
                         Properties properties = new Properties();
                         FileReader fileReader = new FileReader(propertiesFilePath.getRemote());
