@@ -8,9 +8,9 @@ import java.util.List;
  */
 public class IvyDependencyValue implements Serializable {
 
-    private String revision;
+    private final String revision;
 
-    private List<IvyArtifactValue> artifacts;
+    private final List<IvyArtifactValue> artifacts;
 
     public IvyDependencyValue(String revision, List<IvyArtifactValue> artifacts) {
         this.revision = revision;

@@ -1,50 +1,41 @@
+<?jelly escape-by-default='true'?>
 <j:jelly xmlns:j="jelly:core" xmlns:f="/lib/form">
 
     <f:entry field="ivyPath" title="${%Ivy Path}">
-        <f:textbox name="ivyPath" value="${instance.ivyPath}"/>
+        <f:textbox/>
     </f:entry>
 
-    <f:entry field="ivyPath" title="${%Ivy Settings Path}">
-        <f:textbox name="ivySettingsPath" value="${instance.ivySettingsPath}"/>
+    <f:entry field="ivySettingsPath" title="${%Ivy Settings Path}">
+        <f:textbox/>
     </f:entry>
 
-    <f:entry field="propertiesFilePath"
-             title="${%Properties file to load}">
-        <f:textbox name="propertiesFilePath" value="${instance.propertiesFilePath}"/>
+    <f:entry field="propertiesFilePath" title="${%Properties file to load}">
+        <f:textbox/>
     </f:entry>
 
-    <f:entry field="propertiesContent"
-             title="${%Properties Content}">
-        <f:textarea name="propertiesContent" value="${instance.propertiesContent}"/>
+    <f:entry field="propertiesContent" title="${%Properties Content}">
+        <f:textarea/>
     </f:entry>
 
-    <f:entry field="debug"
-             title="${%Active debug mode on artifacts resolution}">
-        <f:checkbox name="debug" checked="${instance.debug}"/>
+    <f:entry field="debug" title="${%Active debug mode on artifacts resolution}">
+        <f:checkbox/>
     </f:entry>
 
-    <f:entry field="downloadArtifacts"
-             title="${%Download artifacts for dependencies to see if they have changed}">
-        <f:checkbox name="downloadArtifacts" checked="${instance.downloadArtifacts}" default="true"/>
+    <f:entry field="downloadArtifacts" title="${%Download artifacts for dependencies to see if they have changed}">
+        <f:checkbox default="true"/>
     </f:entry>
 
     <f:entry field="enableConcurrentBuild" title="${%Enable Concurrent Build}">
-        <f:checkbox name="enableConcurrentBuild" checked="${instance.enableConcurrentBuild}"/>
+        <f:checkbox/>
     </f:entry>
 
     <f:entry title="${%Polling Node}">
         <f:entry>
             <table style="width:100%">
-                <f:optionalBlock
-                        name="labelRestriction"
-                        field="labelRestriction"
-                        checked="${instance.labelRestriction}"
-                        title="${%Restrict where the polling can be run}">
-
+                <f:optionalBlock field="labelRestriction" title="${%Restrict where the polling can be run}">
                     <f:block>
-                        <f:entry title="Label Expression">
-                            <f:textbox name="triggerLabel"
-                                       value="${instance.triggerLabel}"/>
+                        <f:entry field="triggerLabel" title="${%Label Expression}">
+                            <f:textbox/>
                         </f:entry>
                     </f:block>
                 </f:optionalBlock>

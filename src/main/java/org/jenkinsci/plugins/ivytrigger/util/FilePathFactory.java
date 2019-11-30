@@ -13,7 +13,6 @@ import java.util.Map;
 
 public class FilePathFactory {
 
-
     public FilePath getDescriptorFilePath(String filePath,
                                           AbstractProject job,
                                           Node pollingNode,
@@ -21,7 +20,6 @@ public class FilePathFactory {
                                           Map<String, String> envVars)
             throws XTriggerException {
         try {
-
             //If the current file path is not specified, don't compute it
             if (filePath == null) {
                 return null;
@@ -51,7 +49,6 @@ public class FilePathFactory {
                 log.error(String.format("Can't find the file '%s'.", resolvedFilePath));
                 return null;
             } else {
-
                 FilePath filePathObject = new FilePath(pollingNode.getRootPath(), resolvedFilePath);
 
                 if (filePathObject.exists()) {
@@ -62,11 +59,8 @@ public class FilePathFactory {
                 return null;
             }
 
-        } catch (IOException ioe) {
-            throw new XTriggerException(ioe);
-        } catch (InterruptedException ie) {
-            throw new XTriggerException(ie);
+        } catch (IOException | InterruptedException e) {
+            throw new XTriggerException(e);
         }
     }
-
 }

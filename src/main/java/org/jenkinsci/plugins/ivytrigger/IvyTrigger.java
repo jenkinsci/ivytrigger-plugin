@@ -28,42 +28,39 @@ import java.net.URL;
 import java.nio.charset.Charset;
 import java.util.*;
 
-
 /**
  * @author Gregory Boissinot
  */
 public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> implements Serializable {
 
-    private String ivyPath;
+    private static final long serialVersionUID = 1L;
 
-    private String ivySettingsPath;
+    private final String ivyPath;
 
-    private String propertiesFilePath;
+    private final String ivySettingsPath;
 
-    private String propertiesContent;
+    private final String propertiesFilePath;
 
-    private boolean debug;
+    private final String propertiesContent;
 
-    private boolean labelRestriction;
+    private final boolean debug;
 
-    private boolean enableConcurrentBuild;
+    private final boolean labelRestriction;
 
-    private boolean downloadArtifacts;
+    private final boolean enableConcurrentBuild;
 
-    private transient FilePathFactory filePathFactory;
-
-    private transient PropertiesFileContentExtractor propertiesFileContentExtractor;
+    private final boolean downloadArtifacts;
 
     @DataBoundConstructor
     public IvyTrigger(String cronTabSpec, String ivyPath, String ivySettingsPath, String propertiesFilePath, String propertiesContent, LabelRestrictionClass labelRestriction, boolean enableConcurrentBuild, boolean debug, boolean downloadArtifacts) throws ANTLRException {
         super(cronTabSpec, (labelRestriction == null) ? null : labelRestriction.getTriggerLabel(), enableConcurrentBuild);
-        this.ivyPath = Util.fixEmpty(ivyPath);
-        this.ivySettingsPath = Util.fixEmpty(ivySettingsPath);
-        this.propertiesFilePath = Util.fixEmpty(propertiesFilePath);
-        this.propertiesContent = Util.fixEmpty(propertiesContent);
+        this.ivyPath = Util.fixEmptyAndTrim(ivyPath);
+        this.ivySettingsPath = Util.fixEmptyAndTrim(ivySettingsPath);
+        this.propertiesFilePath = Util.fixEmptyAndTrim(propertiesFilePath);
+        this.propertiesContent = Util.fixEmptyAndTrim(propertiesContent);
         this.debug = debug;
         this.downloadArtifacts = downloadArtifacts;
-        this.labelRestriction = (labelRestriction == null) ? false : true;
+        this.labelRestriction = labelRestriction != null;
         this.enableConcurrentBuild = enableConcurrentBuild;
     }
 
@@ -111,10 +108,9 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
         return Collections.singleton(action);
     }
 
-
     public final class InternalIvyTriggerAction extends IvyTriggerAction {
 
-        private transient String label;
+        private final transient String label;
 
         public InternalIvyTriggerAction(String label) {
             this.label = label;
@@ -152,10 +148,9 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
 
         @SuppressWarnings("unused")
         public void writeLogTo(XMLOutput out) throws IOException {
-            new AnnotatedLargeText<InternalIvyTriggerAction>(getLogFile(), Charset.defaultCharset(), true, this).writeHtmlTo(0, out.asWriter());
+            new AnnotatedLargeText<>(getLogFile(), Charset.defaultCharset(), true, this).writeHtmlTo(0, out.asWriter());
         }
     }
-
 
     @Override
     public boolean isContextOnStartupFetched() {
@@ -164,7 +159,6 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
 
     @Override
     protected IvyTriggerContext getContext(Node pollingNode, XTriggerLog log) throws XTriggerException {
-
         log.info(String.format("Given job Ivy file value: %s", ivyPath));
         log.info(String.format("Given job Ivy settings file value: %s", ivySettingsPath));
 
@@ -199,53 +193,42 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
                 ivySettingsUrl == null ? ivySettingsFilePath.getRemote() : ivySettingsUrl
                         .toString()));
 
-        if ( downloadArtifacts ) {
-            log.info("Artifacts in dependencies will be downloaded");
+        if (downloadArtifacts) {
+            log.info("Artifacts in dependencies will be downloaded.");
         }
 
         PropertiesFileContentExtractor propertiesFileContentExtractor = new PropertiesFileContentExtractor(new FilePathFactory());
         String propertiesFileContent = propertiesFileContentExtractor.extractPropertiesFileContents(propertiesFilePath, project, pollingNode, log, envVars);
         String propertiesContentResolved = Util.replaceMacro(propertiesContent, envVars);
 
-        Map<String, IvyDependencyValue> dependencies;
+        Map<String, IvyDependencyValue> dependencies = null;
         try {
-            FilePath temporaryPropertiesFilePath = pollingNode.getRootPath().createTextTempFile("props", "props", propertiesFileContent);
-            log.info("Temporary properties file path is " + temporaryPropertiesFilePath.getName());
-            dependencies = getDependenciesMapForNode(pollingNode, log, ivyFilePath, ivySettingsFilePath, ivySettingsUrl, temporaryPropertiesFilePath, propertiesContentResolved, envVars);
-            temporaryPropertiesFilePath.delete();
-        } catch (IOException ioe) {
-            throw new XTriggerException(ioe);
-        } catch (InterruptedException ie) {
-            throw new XTriggerException(ie);
+            FilePath launcherFilePath = pollingNode.getRootPath();
+            if (launcherFilePath != null) {
+                FilePath temporaryPropertiesFilePath = null;
+                try {
+                    temporaryPropertiesFilePath = launcherFilePath.createTextTempFile("props", "props", propertiesFileContent);
+                    log.info("Temporary properties file path: " + temporaryPropertiesFilePath.getName());
+                    dependencies = launcherFilePath.act(new IvyTriggerEvaluator(job.getName(), ivyFilePath, ivySettingsFilePath, ivySettingsUrl, temporaryPropertiesFilePath, propertiesContentResolved, log, debug, downloadArtifacts, envVars));
+                } finally {
+                    if (temporaryPropertiesFilePath != null) {
+                        temporaryPropertiesFilePath.delete();
+                    }
+                }
+            }
+        } catch (IOException | InterruptedException e) {
+            throw new XTriggerException(e);
         }
         return new IvyTriggerContext(dependencies);
-    }
-
-    private Map<String, IvyDependencyValue> getDependenciesMapForNode(Node launcherNode,
-                                                                      XTriggerLog log,
-                                                                      FilePath ivyFilePath,
-                                                                      FilePath ivySettingsFilePath,
-                                                                      URL ivySettingsURL,
-                                                                      FilePath propertiesFilePath,
-                                                                      String propertiesContent,
-                                                                      Map<String, String> envVars) throws IOException, InterruptedException, XTriggerException {
-        Map<String, IvyDependencyValue> dependenciesMap = null;
-        if (launcherNode != null) {
-            FilePath launcherFilePath = launcherNode.getRootPath();
-            if (launcherFilePath != null) {
-                dependenciesMap = launcherFilePath.act(new IvyTriggerEvaluator(job.getName(), ivyFilePath, ivySettingsFilePath, ivySettingsURL, propertiesFilePath, propertiesContent, log, debug, downloadArtifacts, envVars));
-            }
-        }
-        return dependenciesMap;
     }
 
     /**
      * Method tests, whether the string specifies the local file or an URL. In
      * the second case, URL is returned.
+     *
      * @param filename filename to test
      * @param log log for he logging
-     * @return URL, if the specified filename is an URL, <code>null</code>
-     *         otherwise
+     * @return URL, if the specified filename is an URL, <code>null</code> otherwise
      */
     private static URL getRemoteURL(String filename, XTriggerLog log) {
         URL settingsUrl;
@@ -314,7 +297,7 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
         }
 
         if (previousDependencies.size() != newComputedDependencies.size()) {
-            log.info(String.format("\nThe number of resolved dependencies has changed."));
+            log.info("\nThe number of resolved dependencies has changed.");
             setNewContext(newIvyTriggerContext);
             return true;
         }
@@ -374,15 +357,14 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
         // Check if there is at least one change to previous recording artifacts
         // Only do this if we've been told to download artifacts. Otherwise there is
         // nothing to compare.
-        if ( downloadArtifacts ) {
+        if (downloadArtifacts) {
             log.info("...Checking comparison to previous recorded artifacts.");
-            for ( IvyArtifactValue ivyArtifactValue : previousArtifactValueList ) {
-                if ( isArtifactsChanged(log, ivyArtifactValue, newArtifactValueList) ) {
+            for (IvyArtifactValue ivyArtifactValue : previousArtifactValueList) {
+                if (isArtifactsChanged(log, ivyArtifactValue, newArtifactValueList)) {
                     return true;
                 }
             }
-        }
-        else {
+        } else {
             log.info("...Artifacts were not configured for download, no individual artifact checks made.");
         }
 
@@ -390,7 +372,6 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
     }
 
     private boolean isArtifactsChanged(XTriggerLog log, IvyArtifactValue previousIvyArtifactValue, List<IvyArtifactValue> newArtifactValueList) {
-
         log.info(String.format("....Checking previous recording artifact %s", previousIvyArtifactValue.getFullName()));
 
         //Get the new artifact with same coordinates
@@ -434,6 +415,7 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
      *
      * @return the trigger log
      */
+    @Override
     protected File getLogFile() {
         return new File(job.getRootDir(), "ivy-polling.log");
     }
@@ -459,8 +441,7 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
 
         @Override
         public String getDisplayName() {
-            return "[IvyTrigger] - Poll with an Ivy script";
+            return "IvyTrigger - Poll with an Ivy script";
         }
     }
-
 }

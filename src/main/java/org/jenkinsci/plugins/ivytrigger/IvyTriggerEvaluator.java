@@ -3,6 +3,7 @@ package org.jenkinsci.plugins.ivytrigger;
 import hudson.FilePath;
 import hudson.remoting.VirtualChannel;
 
+import jenkins.MasterToSlaveFileCallable;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.ivy.Ivy;
@@ -15,38 +16,41 @@ import org.apache.ivy.core.report.ResolveReport;
 import org.apache.ivy.core.resolve.IvyNode;
 import org.apache.ivy.core.resolve.ResolveOptions;
 import org.apache.ivy.core.settings.IvySettings;
+import org.apache.ivy.core.settings.IvyVariableContainer;
+import org.apache.ivy.core.settings.IvyVariableContainerImpl;
 import org.jenkinsci.lib.xtrigger.XTriggerException;
 import org.jenkinsci.lib.xtrigger.XTriggerLog;
 
 import java.io.*;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.util.*;
 
 /**
  * @author Gregory Boissinot
  */
-public class IvyTriggerEvaluator implements FilePath.FileCallable<Map<String, IvyDependencyValue>> {
+public class IvyTriggerEvaluator extends MasterToSlaveFileCallable<Map<String, IvyDependencyValue>> {
 
-    private String namespace;
+    private final String namespace;
 
-    private FilePath ivyFilePath;
+    private final FilePath ivyFilePath;
 
-    private FilePath ivySettingsFilePath;
+    private final FilePath ivySettingsFilePath;
 
     private final URL ivySettingsURL;
 
-    private FilePath propertiesFilePath;
+    private final FilePath propertiesFilePath;
 
-    private String propertiesContent;
+    private final String propertiesContent;
 
-    private XTriggerLog log;
+    private final XTriggerLog log;
 
-    private boolean debug;
+    private final boolean debug;
 
     private final boolean downloadArtifacts;
 
-    private Map<String, String> envVars;
+    private final Map<String, String> envVars;
 
     public IvyTriggerEvaluator(String namespace,
                                FilePath ivyFilePath,
@@ -70,8 +74,8 @@ public class IvyTriggerEvaluator implements FilePath.FileCallable<Map<String, Iv
         this.envVars = envVars;
     }
 
+    @Override
     public Map<String, IvyDependencyValue> invoke(File launchDir, VirtualChannel channel) throws IOException, InterruptedException {
-        Map<String, IvyDependencyValue> result;
         try {
             Ivy ivy = getIvyObject(launchDir, log);
             log.info("\nResolving Ivy dependencies.");
@@ -79,14 +83,13 @@ public class IvyTriggerEvaluator implements FilePath.FileCallable<Map<String, Iv
             ResolveOptions options = new ResolveOptions();
             options.setDownload(downloadArtifacts);
 
-            // Need to be able to pass a URL to resolve() so that we can also pass in some options
-            final URL ivyFileURL = new File(ivyFilePath.getRemote()).toURI().toURL();
+            File ivyFile = new File(ivyFilePath.getRemote());
 
-            ResolveReport resolveReport = ivy.resolve(ivyFileURL, options);
+            ResolveReport resolveReport = ivy.resolve(ivyFile, options);
             if (resolveReport.hasError()) {
                 List problems = resolveReport.getAllProblemMessages();
                 if (problems != null && !problems.isEmpty()) {
-                    StringBuffer errorMsgs = new StringBuffer();
+                    StringBuilder errorMsgs = new StringBuilder();
                     errorMsgs.append("Errors:\n");
                     for (Object problem : problems) {
                         errorMsgs.append(problem);
@@ -96,7 +99,7 @@ public class IvyTriggerEvaluator implements FilePath.FileCallable<Map<String, Iv
                 }
             }
 
-            result = getMapDependencies(ivy, resolveReport, log);
+            return getMapDependencies(ivy, resolveReport, log);
 
         } catch (ParseException pe) {
             log.error("Parsing error: " + pe.getMessage());
@@ -108,149 +111,117 @@ public class IvyTriggerEvaluator implements FilePath.FileCallable<Map<String, Iv
             log.error("XTrigger exception: " + xe.getMessage());
             return null;
         }
-
-        return result;
     }
 
     private Ivy getIvyObject(File launchDir, XTriggerLog log) throws XTriggerException {
-
-        Map<String, String> variables = getVariables();
-
-        File tempSettings = null;
+        File tempSettingsFile = null;
         try {
+            IvyVariableContainer variables = new IvyVariableContainerImpl(getVariables());
 
-            //------------ENV_VAR_
-            StringBuffer envVarsContent = new StringBuffer();
-            for (Map.Entry<String, String> entry : variables.entrySet()) {
-                envVarsContent.append(String.format("<property name=\"%s\" value=\"%s\"/>\n", entry.getKey(), entry.getValue()));
-            }
-
-            //-----------Inject properties files
             String settingsContent = getIvySettingsContents();
-            StringBuffer stringBuffer = new StringBuffer(settingsContent);
-            int index = stringBuffer.indexOf("<ivysettings>");
-            stringBuffer.insert(index + "<ivysettings>".length() + 1, envVarsContent.toString());
-            tempSettings = File.createTempFile("file", ".tmp");
-            FileOutputStream fileOutputStream = new FileOutputStream(tempSettings);
-            fileOutputStream.write(stringBuffer.toString().getBytes());
+            tempSettingsFile = File.createTempFile("file", ".tmp");
+            FileUtils.write(tempSettingsFile, settingsContent, StandardCharsets.UTF_8);
 
-            IvySettings ivySettings = new IvySettings();
-            ivySettings.load(tempSettings);
+            IvySettings ivySettings = new IvySettings(variables);
+            ivySettings.load(tempSettingsFile);
             ivySettings.setDefaultCache(getAndInitCacheDir(launchDir));
 
             Ivy ivy = Ivy.newInstance(ivySettings);
             ivy.getLoggerEngine().pushLogger(new IvyTriggerResolverLog(log, debug));
-            for (Map.Entry<String, String> entry : variables.entrySet()) {
-                ivy.setVariable(entry.getKey(), entry.getValue());
-            }
 
             return ivy;
 
-        } catch (ParseException pe) {
-            throw new XTriggerException(pe);
-        } catch (IOException ioe) {
-            throw new XTriggerException(ioe);
+        } catch (ParseException | IOException e) {
+            throw new XTriggerException(e);
         } finally {
-            if (tempSettings != null) {
-                tempSettings.delete();
+            if (tempSettingsFile != null) {
+                if (!tempSettingsFile.delete()) {
+                    log.error("Can't delete temporary file: " + tempSettingsFile);
+                }
             }
         }
-
     }
 
     /**
      * Method retrieves Ivy Settings contents from URL or from file on
      * master/slave
+     *
      * @throws IOException on some IO exception occurs
      */
     private String getIvySettingsContents() throws IOException {
         if (ivySettingsFilePath != null) {
             log.info("Getting settings from file " + ivySettingsFilePath.getRemote());
-            return FileUtils.readFileToString(new File(ivySettingsFilePath.getRemote()));
+            return FileUtils.readFileToString(new File(ivySettingsFilePath.getRemote()), StandardCharsets.UTF_8);
         } else {
             log.info("Getting settings from URL " + ivySettingsURL.toString());
-            InputStream is = null;
-            try {
-                log.info("Getting settings from URL");
-                is = ivySettingsURL.openStream();
-                final String result = IOUtils.toString(is);
-                return result;
-            } finally {
-                if ( is != null ) {
-                    is.close();
-                }
+            try (InputStream is = ivySettingsURL.openStream()) {
+                return IOUtils.toString(is, StandardCharsets.UTF_8);
             }
         }
     }
 
     private Map<String, String> getVariables() throws XTriggerException {
         //we want variables to be sorted
-        final Map<String, String> variables = new TreeMap<String, String>();
+        final Map<String, String> variables = new TreeMap<>();
         try {
-
             //Inject variables from dependencies properties and envVars
             if (envVars != null) {
                 variables.putAll(envVars);
             }
 
             if (propertiesFilePath != null) {
-
-                propertiesFilePath.act(new FilePath.FileCallable<Void>() {
+                propertiesFilePath.act(new MasterToSlaveFileCallable<Void>() {
+                    @Override
                     public Void invoke(File f, VirtualChannel channel) throws IOException, InterruptedException {
                         Properties properties = new Properties();
-                        FileReader fileReader = new FileReader(propertiesFilePath.getRemote());
-                        properties.load(fileReader);
-                        fileReader.close();
+                        try (InputStream stream = new FileInputStream(propertiesFilePath.getRemote());
+                             Reader streamReader = new InputStreamReader(stream, StandardCharsets.ISO_8859_1)) {
+                            properties.load(streamReader);
+                        }
                         for (Map.Entry<Object, Object> entry : properties.entrySet()) {
                             variables.put(String.valueOf(entry.getKey()), String.valueOf(entry.getValue()));
                         }
                         return null;
                     }
-                }
-                );
+                });
             }
 
             if (propertiesContent != null) {
                 Properties properties = new Properties();
-                StringReader stringReader = new StringReader(propertiesContent);
-                properties.load(stringReader);
-                stringReader.close();
+                try (Reader stringReader = new StringReader(propertiesContent)) {
+                    properties.load(stringReader);
+                }
                 for (Map.Entry<Object, Object> entry : properties.entrySet()) {
                     variables.put(String.valueOf(entry.getKey()), String.valueOf(entry.getValue()));
                 }
             }
 
-        } catch (IOException ioe) {
-            throw new XTriggerException(ioe);
-        } catch (InterruptedException ie) {
-            throw new XTriggerException(ie);
+        } catch (IOException | InterruptedException e) {
+            throw new XTriggerException(e);
         }
 
         return variables;
     }
 
-
-    private File getAndInitCacheDir(File launchDir) {
+    private File getAndInitCacheDir(File launchDir) throws IOException {
         File cacheDir = new File(launchDir, "ivy-trigger-cache/" + namespace);
-        cacheDir.mkdirs();
+        FileUtils.forceMkdir(cacheDir);
         return cacheDir;
     }
 
-
     private Map<String, IvyDependencyValue> getMapDependencies(Ivy ivy, ResolveReport resolveReport, XTriggerLog log) {
-
         List dependencies = resolveReport.getDependencies();
 
-        Map<String, IvyDependencyValue> result = new HashMap<String, IvyDependencyValue>();
+        Map<String, IvyDependencyValue> result = new HashMap<>();
         for (Object dependencyObject : dependencies) {
             try {
                 IvyNode dependencyNode = (IvyNode) dependencyObject;
                 ModuleRevisionId moduleRevisionId = dependencyNode.getResolvedId();
                 String moduleRevision = moduleRevisionId.getRevision();
 
-                List<IvyArtifactValue> ivyArtifactValues = new ArrayList<IvyArtifactValue>();
+                List<IvyArtifactValue> ivyArtifactValues = new ArrayList<>();
 
-                if ( dependencyNode.isDownloaded() ) {
+                if (dependencyNode.isDownloaded()) {
                     Artifact[] artifacts = dependencyNode.getAllArtifacts();
 
                     if (artifacts != null) {
@@ -272,12 +243,10 @@ public class IvyTriggerEvaluator implements FilePath.FileCallable<Map<String, Iv
                 }
                 result.put(dependencyNode.getId().toString(), new IvyDependencyValue(moduleRevision, ivyArtifactValues));
             } catch (Throwable e) {
-                log.error(String.format("Can't retrieve artifacts for dependency" + (IvyNode) dependencyObject));
-                continue;
+                log.error("Can't retrieve artifacts for dependency" + (IvyNode) dependencyObject);
             }
         }
 
         return result;
-
     }
 }

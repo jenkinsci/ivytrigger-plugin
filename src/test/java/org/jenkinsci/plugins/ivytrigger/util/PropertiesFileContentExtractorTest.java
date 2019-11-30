@@ -25,6 +25,7 @@ import static org.mockito.Mockito.when;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({FilePath.class})
 public class PropertiesFileContentExtractorTest {
+
     private PropertiesFileContentExtractor propertiesFileContentExtractor;
     private FilePathFactory filePathFactory;
 
@@ -37,7 +38,7 @@ public class PropertiesFileContentExtractorTest {
     public void setUp() throws Exception {
         this.filePathFactory = mock(FilePathFactory.class);
         this.propertiesFileContentExtractor = new PropertiesFileContentExtractor(filePathFactory);
-        this.envVars = new HashMap<String, String>();
+        this.envVars = new HashMap<>();
         this.log = new XTriggerLog(null); // XTriggerLog can deal with the null listener, so good enough.
     }
 
@@ -47,7 +48,6 @@ public class PropertiesFileContentExtractorTest {
         this.filePathFactory = null;
         this.envVars = null;
         this.log = null;
-        ;
     }
 
     @Test
