@@ -290,11 +290,13 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
             log.info(String.format("Resolved dependency %s ...", dependency.getKey()));
         }
 
+        /* Redundant code - commenting out until we can decide which action is correct in this instance.
         if (previousDependencies == null) {
             log.info("\nRecording dependencies state. Waiting for next schedule to compare changes between polls.");
             setNewContext(newIvyTriggerContext);
             return false;
         }
+		*/
 
         if (previousDependencies.size() != newComputedDependencies.size()) {
             log.info("\nThe number of resolved dependencies has changed.");
