@@ -46,19 +46,15 @@ public class FilePathFactory {
                 if (file.exists()) {
                     return new FilePath(file);
                 }
-                log.error(String.format("Can't find the file '%s'.", resolvedFilePath));
-                return null;
             } else {
                 FilePath filePathObject = new FilePath(pollingNode.getRootPath(), resolvedFilePath);
 
                 if (filePathObject.exists()) {
                     return filePathObject;
                 }
-
-                log.error(String.format("Can't find the file '%s'.", resolvedFilePath));
-                return null;
             }
-
+            log.error(String.format("Can't find the file '%s'.", resolvedFilePath));
+            return null;
         } catch (IOException | InterruptedException e) {
             throw new XTriggerException(e);
         }
