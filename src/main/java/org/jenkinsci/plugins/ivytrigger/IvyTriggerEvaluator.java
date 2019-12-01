@@ -243,7 +243,7 @@ public class IvyTriggerEvaluator extends MasterToSlaveFileCallable<Map<String, I
                 }
                 result.put(dependencyNode.getId().toString(), new IvyDependencyValue(moduleRevision, ivyArtifactValues));
             } catch (Throwable e) {
-                log.error("Can't retrieve artifacts for dependency" + (IvyNode) dependencyObject);
+                log.error("Can't retrieve artifacts for dependency " + dependencyObject);
             }
         }
 
