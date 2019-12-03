@@ -233,17 +233,15 @@ public class IvyTriggerEvaluator extends MasterToSlaveFileCallable<Map<String, I
                             if (artifactOrigin != null && artifactOrigin.isLocal()) {
                                 String location = artifactOrigin.getLocation();
                                 File artifactFile = new File(location);
-                                if (artifactFile != null) {
-                                    long lastModificationDate = artifactFile.lastModified();
-                                    ivyArtifactValues.add(new IvyArtifactValue(artifact.getName(), artifact.getExt(), lastModificationDate));
-                                }
+                                long lastModificationDate = artifactFile.lastModified();
+                                ivyArtifactValues.add(new IvyArtifactValue(artifact.getName(), artifact.getExt(), lastModificationDate));
                             }
                         }
                     }
                 }
                 result.put(dependencyNode.getId().toString(), new IvyDependencyValue(moduleRevision, ivyArtifactValues));
             } catch (Throwable e) {
-                log.error("Can't retrieve artifacts for dependency" + (IvyNode) dependencyObject);
+                log.error("Can't retrieve artifacts for dependency " + dependencyObject);
             }
         }
 
