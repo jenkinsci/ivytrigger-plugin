@@ -419,7 +419,11 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
      */
     @Override
     protected File getLogFile() {
-        return new File(job.getRootDir(), "ivy-polling.log");
+    	if( job != null ) {
+    		return new File(job.getRootDir(), "ivy-polling.log");
+    	} else {
+    		return null ;
+    	}
     }
 
     @Override
