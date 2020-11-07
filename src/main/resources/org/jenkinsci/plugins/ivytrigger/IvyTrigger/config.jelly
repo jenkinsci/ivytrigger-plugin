@@ -1,5 +1,5 @@
 <?jelly escape-by-default='true'?>
-<j:jelly xmlns:j="jelly:core" xmlns:f="/lib/form">
+<j:jelly xmlns:j="jelly:core" xmlns:f="/lib/form" xmlns:ivytrigger="/lib/ivytrigger">
 
     <f:entry field="ivyPath" title="${%Ivy Path}">
         <f:textbox/>
@@ -31,7 +31,7 @@
 
     <f:entry title="${%Polling Node}">
         <f:entry>
-            <table style="width:100%">
+            <ivytrigger:blockWrapper>
                 <f:optionalBlock field="labelRestriction" title="${%Restrict where the polling can be run}">
                     <f:block>
                         <f:entry field="triggerLabel" title="${%Label Expression}">
@@ -39,7 +39,7 @@
                         </f:entry>
                     </f:block>
                 </f:optionalBlock>
-            </table>
+            </ivytrigger:blockWrapper>
         </f:entry>
     </f:entry>
 
