@@ -47,11 +47,14 @@ public class FilePathFactory {
                     return new FilePath(file);
                 }
             } else {
-                FilePath filePathObject = new FilePath(pollingNode.getRootPath(), resolvedFilePath);
-
-                if (filePathObject.exists()) {
-                    return filePathObject;
-                }
+            	FilePath path = pollingNode.getRootPath();
+            	if( path != null ) {
+	                FilePath filePathObject = new FilePath(path, resolvedFilePath);
+	
+	                if (filePathObject.exists()) {
+	                    return filePathObject;
+	                }
+            	}
             }
             log.error(String.format("Can't find the file '%s'.", resolvedFilePath));
             return null;

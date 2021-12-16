@@ -1,6 +1,7 @@
 package org.jenkinsci.plugins.ivytrigger;
 
 import antlr.ANTLRException;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.Extension;
 import hudson.FilePath;
 import hudson.Util;
@@ -147,6 +148,7 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
         }
 
         @SuppressWarnings("unused")
+        @SuppressFBWarnings("RV_RETURN_VALUE_IGNORED")
         public void writeLogTo(XMLOutput out) throws IOException {
             new AnnotatedLargeText<>(getLogFile(), Charset.defaultCharset(), true, this).writeHtmlTo(0, out.asWriter());
         }
