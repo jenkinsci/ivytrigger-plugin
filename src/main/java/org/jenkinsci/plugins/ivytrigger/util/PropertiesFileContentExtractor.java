@@ -5,8 +5,8 @@ import hudson.model.AbstractProject;
 import hudson.model.Node;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
-import org.jenkinsci.lib.xtrigger.XTriggerException;
-import org.jenkinsci.lib.xtrigger.XTriggerLog;
+import org.jenkinsci.plugins.xtriggerapi.XTriggerException;
+import org.jenkinsci.plugins.xtriggerapi.XTriggerLog;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;

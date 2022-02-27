@@ -12,11 +12,11 @@ import hudson.model.Node;
 
 import org.apache.commons.jelly.XMLOutput;
 import org.jenkinsci.lib.envinject.EnvInjectException;
-import org.jenkinsci.lib.envinject.service.EnvVarsResolver;
-import org.jenkinsci.lib.xtrigger.AbstractTriggerByFullContext;
-import org.jenkinsci.lib.xtrigger.XTriggerDescriptor;
-import org.jenkinsci.lib.xtrigger.XTriggerException;
-import org.jenkinsci.lib.xtrigger.XTriggerLog;
+import org.jenkinsci.plugins.envinjectapi.util.EnvVarsResolver;
+import org.jenkinsci.plugins.xtriggerapi.AbstractTriggerByFullContext;
+import org.jenkinsci.plugins.xtriggerapi.XTriggerDescriptor;
+import org.jenkinsci.plugins.xtriggerapi.XTriggerException;
+import org.jenkinsci.plugins.xtriggerapi.XTriggerLog;
 import org.jenkinsci.plugins.ivytrigger.util.FilePathFactory;
 import org.jenkinsci.plugins.ivytrigger.util.PropertiesFileContentExtractor;
 import org.kohsuke.stapler.DataBoundConstructor;
@@ -165,10 +165,13 @@ public class IvyTrigger extends AbstractTriggerByFullContext<IvyTriggerContext> 
         log.info(String.format("Given job Ivy settings file value: %s", ivySettingsPath));
 
         AbstractProject project = (AbstractProject) job;
-        EnvVarsResolver varsRetriever = new EnvVarsResolver();
         Map<String, String> envVars;
         try {
-            envVars = varsRetriever.getPollingEnvVars(project, pollingNode);
+        	if( project != null ) {
+        		envVars = EnvVarsResolver.getPollingEnvVars(project, pollingNode);
+        	} else {
+        		envVars = new HashMap< String , String >() ;
+        	}
         } catch (EnvInjectException e) {
             throw new XTriggerException(e);
         }

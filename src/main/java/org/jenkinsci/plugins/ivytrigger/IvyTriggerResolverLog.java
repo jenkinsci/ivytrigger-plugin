@@ -1,7 +1,7 @@
 package org.jenkinsci.plugins.ivytrigger;
 
 import org.apache.ivy.util.AbstractMessageLogger;
-import org.jenkinsci.lib.xtrigger.XTriggerLog;
+import org.jenkinsci.plugins.xtriggerapi.XTriggerLog;
 
 /**
  * @author Gregory Boissinot

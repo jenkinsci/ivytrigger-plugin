@@ -3,7 +3,7 @@ package org.jenkinsci.plugins.ivytrigger.util;
 import hudson.FilePath;
 import hudson.model.FreeStyleProject;
 import hudson.model.Node;
-import org.jenkinsci.lib.xtrigger.XTriggerLog;
+import org.jenkinsci.plugins.xtriggerapi.XTriggerLog;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;

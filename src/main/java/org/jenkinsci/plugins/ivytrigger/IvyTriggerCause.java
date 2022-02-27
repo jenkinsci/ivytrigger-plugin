@@ -1,6 +1,6 @@
 package org.jenkinsci.plugins.ivytrigger;
 
-import org.jenkinsci.lib.xtrigger.XTriggerCause;
+import org.jenkinsci.plugins.xtriggerapi.XTriggerCause;
 
 /**
  * @author Gregory Boissinot

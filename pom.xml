@@ -31,24 +31,26 @@
     </developers>
 
     <properties>
-        <revision>0.36</revision>
+        <revision>1.00</revision>
         <changelist>-SNAPSHOT</changelist>
         <java.level>8</java.level>
-        <jenkins.version>2.204.6</jenkins.version>
+        <jenkins.version>2.263.4</jenkins.version>
         <findbugs.failOnError>false</findbugs.failOnError>
         <ivy.version>2.5.0</ivy.version>
-        <xtrigger.lib.version>0.36</xtrigger.lib.version>
+        <xtrigger.api.version>0.4</xtrigger.api.version>
     </properties>
 
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>org.hamcrest</groupId>
-                <artifactId>hamcrest-core</artifactId>
-                <version>2.2</version>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>io.jenkins.tools.bom</groupId>
+				<artifactId>bom-2.263.x</artifactId>
+				<version>984.vb5eaac999a7e</version>
+				<scope>import</scope>
+				<type>pom</type>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
 
     <dependencies>
 
@@ -59,9 +61,9 @@
         </dependency>
 
         <dependency>
-            <groupId>org.jenkins-ci.lib</groupId>
-            <artifactId>xtrigger-lib</artifactId>
-            <version>${xtrigger.lib.version}</version>
+            <groupId>org.jenkins-ci.plugins</groupId>
+            <artifactId>xtrigger-api</artifactId>
+            <version>${xtrigger.api.version}</version>
         </dependency>
 
         <dependency>

@@ -1,6 +1,6 @@
 package org.jenkinsci.plugins.ivytrigger;
 
-import org.jenkinsci.lib.xtrigger.XTriggerContext;
+import org.jenkinsci.plugins.xtriggerapi.XTriggerContext;
 
 import java.util.Map;
 
