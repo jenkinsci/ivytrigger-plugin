@@ -12,14 +12,15 @@ import org.apache.ivy.core.cache.DefaultRepositoryCacheManager;
 import org.apache.ivy.core.cache.RepositoryCacheManager;
 import org.apache.ivy.core.module.descriptor.Artifact;
 import org.apache.ivy.core.module.id.ModuleRevisionId;
+import org.apache.ivy.core.report.ArtifactDownloadReport;
 import org.apache.ivy.core.report.ResolveReport;
 import org.apache.ivy.core.resolve.IvyNode;
 import org.apache.ivy.core.resolve.ResolveOptions;
 import org.apache.ivy.core.settings.IvySettings;
 import org.apache.ivy.core.settings.IvyVariableContainer;
 import org.apache.ivy.core.settings.IvyVariableContainerImpl;
-import org.jenkinsci.lib.xtrigger.XTriggerException;
-import org.jenkinsci.lib.xtrigger.XTriggerLog;
+import org.jenkinsci.plugins.xtriggerapi.XTriggerException;
+import org.jenkinsci.plugins.xtriggerapi.XTriggerLog;
 
 import java.io.*;
 import java.net.URL;
@@ -219,24 +220,27 @@ public class IvyTriggerEvaluator extends MasterToSlaveFileCallable<Map<String, I
                 ModuleRevisionId moduleRevisionId = dependencyNode.getResolvedId();
                 String moduleRevision = moduleRevisionId.getRevision();
 
+                ArtifactDownloadReport[] downloadReports = resolveReport.getConfigurationReport(dependencyNode.getRootModuleConfigurations()[0]).getDownloadReports(moduleRevisionId) ;
+                
                 List<IvyArtifactValue> ivyArtifactValues = new ArrayList<>();
+                Artifact[] artifacts = dependencyNode.getAllArtifacts();
+                boolean itemsDownloaded = false ;
+                
+                for( ArtifactDownloadReport downloadReport : downloadReports ) {
+                	if( downloadReport.isDownloaded() ) {
+                		itemsDownloaded = true ;
+                	}
+                }
+                
+                if( itemsDownloaded ) {
 
-                if (dependencyNode.isDownloaded()) {
-                    Artifact[] artifacts = dependencyNode.getAllArtifacts();
-
-                    if (artifacts != null) {
-                        for (Artifact artifact : artifacts) {
-                            IvySettings settings = ivy.getSettings();
-                            File cacheDirFile = settings.getDefaultRepositoryCacheBasedir();
-                            RepositoryCacheManager repositoryCacheManager = new DefaultRepositoryCacheManager("repo", settings, cacheDirFile);
-                            ArtifactOrigin artifactOrigin = repositoryCacheManager.getSavedArtifactOrigin(artifact);
-                            if (artifactOrigin != null && artifactOrigin.isLocal()) {
-                                String location = artifactOrigin.getLocation();
-                                File artifactFile = new File(location);
-                                long lastModificationDate = artifactFile.lastModified();
-                                ivyArtifactValues.add(new IvyArtifactValue(artifact.getName(), artifact.getExt(), lastModificationDate));
-                            }
-                        }
+                	for( ArtifactDownloadReport downloadReport : downloadReports ) {
+                        File localFile = downloadReport.getLocalFile();
+                        long lastModificationDate = localFile.lastModified();
+                        String artifactName = downloadReport.getArtifact().getName() ;
+                        String artifactExt = downloadReport.getArtifact().getExt() ;
+                        
+                        ivyArtifactValues.add(new IvyArtifactValue(artifactName, artifactExt, lastModificationDate));
                     }
                 }
                 result.put(dependencyNode.getId().toString(), new IvyDependencyValue(moduleRevision, ivyArtifactValues));

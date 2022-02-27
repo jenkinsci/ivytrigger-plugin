@@ -4,8 +4,8 @@ import hudson.FilePath;
 import hudson.Util;
 import hudson.model.AbstractProject;
 import hudson.model.Node;
-import org.jenkinsci.lib.xtrigger.XTriggerException;
-import org.jenkinsci.lib.xtrigger.XTriggerLog;
+import org.jenkinsci.plugins.xtriggerapi.XTriggerException;
+import org.jenkinsci.plugins.xtriggerapi.XTriggerLog;
 
 import java.io.File;
 import java.io.IOException;
@@ -47,11 +47,14 @@ public class FilePathFactory {
                     return new FilePath(file);
                 }
             } else {
-                FilePath filePathObject = new FilePath(pollingNode.getRootPath(), resolvedFilePath);
-
-                if (filePathObject.exists()) {
-                    return filePathObject;
-                }
+            	FilePath path = pollingNode.getRootPath();
+            	if( path != null ) {
+	                FilePath filePathObject = new FilePath(path, resolvedFilePath);
+	
+	                if (filePathObject.exists()) {
+	                    return filePathObject;
+	                }
+            	}
             }
             log.error(String.format("Can't find the file '%s'.", resolvedFilePath));
             return null;
