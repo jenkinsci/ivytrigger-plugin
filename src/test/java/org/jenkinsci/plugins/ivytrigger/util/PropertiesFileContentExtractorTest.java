@@ -9,9 +9,6 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.powermock.api.mockito.PowerMockito;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -22,8 +19,6 @@ import java.util.Map;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-@RunWith(PowerMockRunner.class)
-@PrepareForTest({FilePath.class})
 public class PropertiesFileContentExtractorTest {
 
     private PropertiesFileContentExtractor propertiesFileContentExtractor;
@@ -66,8 +61,8 @@ public class PropertiesFileContentExtractorTest {
 
     @Test
     public void getContent_WithContentSingleFilePath() throws Exception {
-        FilePath filePath1 = PowerMockito.mock(FilePath.class);
-        FilePath filePath2 = PowerMockito.mock(FilePath.class);
+        FilePath filePath1 = mock(FilePath.class);
+        FilePath filePath2 = mock(FilePath.class);
 
         when(filePath1.read()).thenReturn(stringToInputStream("1=one\n2=two"));
         when(filePath2.read()).thenReturn(stringToInputStream("3=three\n4=four"));
