@@ -12,7 +12,7 @@
     <artifactId>ivytrigger</artifactId>
     <packaging>hpi</packaging>
     <name>Jenkins IvyTrigger Plug-in</name>
-    <version>1.00</version>
+    <version>${revision}${changelist}</version>
     <url>https://github.com/jenkinsci/${project.artifactId}-plugin</url>
 
     <licenses>
@@ -33,7 +33,7 @@
     </developers>
 
     <properties>
-        <revision>1.00</revision>
+        <revision>1.01</revision>
         <changelist>-SNAPSHOT</changelist>
         <jenkins.version>2.319.1</jenkins.version>
         <gitHubRepo>jenkinsci/${project.artifactId}-plugin</gitHubRepo>
