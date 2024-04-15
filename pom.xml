@@ -35,7 +35,7 @@
     <properties>
         <revision>1.01</revision>
         <changelist>-SNAPSHOT</changelist>
-        <jenkins.version>2.319.1</jenkins.version>
+        <jenkins.version>2.414.3</jenkins.version>
         <gitHubRepo>jenkinsci/${project.artifactId}-plugin</gitHubRepo>
         <ivy.version>2.5.1</ivy.version>
         <xtrigger.api.version>0.4</xtrigger.api.version>
@@ -45,8 +45,8 @@
         <dependencies>
             <dependency>
                 <groupId>io.jenkins.tools.bom</groupId>
-                <artifactId>bom-2.319.x</artifactId>
-                <version>1654.vcb_69d035fa_20</version>
+                <artifactId>bom-2.414.x</artifactId>
+                <version>2977.vdf61ecb_fb_e2d</version>
                 <scope>import</scope>
                 <type>pom</type>
             </dependency>
@@ -54,12 +54,6 @@
     </dependencyManagement>
 
     <dependencies>
-
-        <dependency>
-            <groupId>io.jenkins.plugins</groupId>
-            <artifactId>commons-httpclient3-api</artifactId>
-            <version>3.1-3</version>
-        </dependency>
 
         <dependency>
             <groupId>org.apache.ivy</groupId>
