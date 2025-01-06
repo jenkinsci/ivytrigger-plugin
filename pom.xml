@@ -37,7 +37,7 @@
         <changelist>-SNAPSHOT</changelist>
         <jenkins.version>2.319.1</jenkins.version>
         <gitHubRepo>jenkinsci/${project.artifactId}-plugin</gitHubRepo>
-        <ivy.version>2.5.2</ivy.version>
+        <ivy.version>2.5.3</ivy.version>
         <xtrigger.api.version>0.4</xtrigger.api.version>
     </properties>
 
