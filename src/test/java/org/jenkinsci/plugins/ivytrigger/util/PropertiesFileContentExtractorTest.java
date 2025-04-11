@@ -1,13 +1,10 @@
 package org.jenkinsci.plugins.ivytrigger.util;
 
 import hudson.FilePath;
-import hudson.model.FreeStyleProject;
-import hudson.model.Node;
+import hudson.model.TaskListener;
 import org.jenkinsci.plugins.xtriggerapi.XTriggerLog;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -15,89 +12,80 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-public class PropertiesFileContentExtractorTest {
+class PropertiesFileContentExtractorTest {
 
     private PropertiesFileContentExtractor propertiesFileContentExtractor;
     private FilePathFactory filePathFactory;
 
-    private FreeStyleProject job;
-    private Node pollingNode;
     private XTriggerLog log;
     private Map<String, String> envVars;
 
-    @Before
-    public void setUp() throws Exception {
-        this.filePathFactory = mock(FilePathFactory.class);
-        this.propertiesFileContentExtractor = new PropertiesFileContentExtractor(filePathFactory);
-        this.envVars = new HashMap<>();
-        this.log = new XTriggerLog(null); // XTriggerLog can deal with the null listener, so good enough.
-    }
-
-    @After
-    public void tearDown() {
-        this.propertiesFileContentExtractor = null;
-        this.filePathFactory = null;
-        this.envVars = null;
-        this.log = null;
+    @BeforeEach
+    void setUp() {
+        filePathFactory = mock(FilePathFactory.class);
+        propertiesFileContentExtractor = new PropertiesFileContentExtractor(filePathFactory);
+        envVars = new HashMap<>();
+        log = new XTriggerLog(TaskListener.NULL);
     }
 
     @Test
-    public void getContent_withEmptyPropertiesPath() throws Exception {
-        String content = propertiesFileContentExtractor.extractPropertiesFileContents(null, job, pollingNode, log, envVars);
+    void getContent_withEmptyPropertiesPath() throws Exception {
+        String content = propertiesFileContentExtractor.extractPropertiesFileContents("", null, null, log, envVars);
 
-        Assert.assertEquals("", content);
+        assertEquals("", content);
     }
 
     @Test
-    public void getContent_withNullPropertiesPath() throws Exception {
-        String content = propertiesFileContentExtractor.extractPropertiesFileContents(null, job, pollingNode, log, envVars);
+    void getContent_withNullPropertiesPath() throws Exception {
+        String content = propertiesFileContentExtractor.extractPropertiesFileContents(null, null, null, log, envVars);
 
-        Assert.assertEquals("", content);
+        assertEquals("", content);
     }
 
     @Test
-    public void getContent_WithContentSingleFilePath() throws Exception {
+    void getContent_WithContentSingleFilePath() throws Exception {
         FilePath filePath1 = mock(FilePath.class);
         FilePath filePath2 = mock(FilePath.class);
 
         when(filePath1.read()).thenReturn(stringToInputStream("1=one\n2=two"));
         when(filePath2.read()).thenReturn(stringToInputStream("3=three\n4=four"));
 
-        when(filePathFactory.getDescriptorFilePath("a/", job, pollingNode, log, envVars)).thenReturn(filePath1);
-        when(filePathFactory.getDescriptorFilePath("b/", job, pollingNode, log, envVars)).thenReturn(filePath2);
+        when(filePathFactory.getDescriptorFilePath("a/", null, null, log, envVars)).thenReturn(filePath1);
+        when(filePathFactory.getDescriptorFilePath("b/", null, null, log, envVars)).thenReturn(filePath2);
 
-        String content = this.propertiesFileContentExtractor.extractPropertiesFileContents("a/;b/", job, pollingNode, log, envVars);
+        String content = propertiesFileContentExtractor.extractPropertiesFileContents("a/;b/", null, null, log, envVars);
 
-        Assert.assertEquals("1=one\n2=two\n3=three\n4=four\n", content);
+        assertEquals("1=one\n2=two\n3=three\n4=four\n", content);
     }
 
     @Test
-    public void splitFilePaths_WithSingleValue() throws Exception {
+    void splitFilePaths_WithSingleValue() {
         List<String> filePaths = propertiesFileContentExtractor.splitFilePaths("abcd/");
 
-        Assert.assertEquals(1, filePaths.size());
-        Assert.assertEquals("abcd/", filePaths.get(0));
+        assertEquals(1, filePaths.size());
+        assertEquals("abcd/", filePaths.get(0));
     }
 
     @Test
-    public void splitFilePaths_WithMultipleValues() throws Exception {
+    void splitFilePaths_WithMultipleValues() {
         List<String> filePaths = propertiesFileContentExtractor.splitFilePaths("abcd/;efgh/");
 
-        Assert.assertEquals(2, filePaths.size());
-        Assert.assertEquals("abcd/", filePaths.get(0));
-        Assert.assertEquals("efgh/", filePaths.get(1));
+        assertEquals(2, filePaths.size());
+        assertEquals("abcd/", filePaths.get(0));
+        assertEquals("efgh/", filePaths.get(1));
     }
 
     @Test
-    public void splitFilePaths_WithMultipleValues_Trim() throws Exception {
+    void splitFilePaths_WithMultipleValues_Trim() {
         List<String> filePaths = propertiesFileContentExtractor.splitFilePaths(" /abcd/ ; /efgh");
 
-        Assert.assertEquals(2, filePaths.size());
-        Assert.assertEquals("/abcd/", filePaths.get(0));
-        Assert.assertEquals("/efgh", filePaths.get(1));
+        assertEquals(2, filePaths.size());
+        assertEquals("/abcd/", filePaths.get(0));
+        assertEquals("/efgh", filePaths.get(1));
     }
 
     private InputStream stringToInputStream(String props) {
