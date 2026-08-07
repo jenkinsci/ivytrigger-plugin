@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.jenkins-ci.plugins</groupId>
         <artifactId>plugin</artifactId>
-        <version>5.9</version>
+        <version>5.2102.v5f5fe09fccf1</version>
         <relativePath />
     </parent>
 
@@ -37,6 +37,7 @@
         <!-- https://www.jenkins.io/doc/developer/plugin-development/choosing-jenkins-baseline/ -->
         <jenkins.baseline>2.479</jenkins.baseline>
         <jenkins.version>${jenkins.baseline}.3</jenkins.version>
+        <ban-junit4-imports.skip>false</ban-junit4-imports.skip>
         <gitHubRepo>jenkinsci/${project.artifactId}-plugin</gitHubRepo>
         <ivy.version>2.5.3</ivy.version>
         <xtrigger.api.version>1.2</xtrigger.api.version>
